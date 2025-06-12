@@ -56,10 +56,14 @@ export type Condition =
 	| ReferenceCondition
 	| ConditionObject;
 
-export interface Rule {
+export interface RuleMeta {
 	readonly role?: Role | readonly Role[];
 	readonly resource?: Resource;
 	readonly operation?: Operation;
+}
+
+export interface Rule {
+	readonly meta?: RuleMeta;
 	readonly match?: Readonly<Record<string, Condition>>;
 	readonly rules?: readonly Rule[];
 }
@@ -96,19 +100,20 @@ export const matchesRule = (
 	action: Operation,
 	context: Context,
 ): boolean => {
-	if (rule.role) {
-		const roles = Array.isArray(rule.role) ? rule.role : [rule.role];
+	const { role, resource, operation } = rule.meta ?? {};
+
+	if (role) {
+		const roles = Array.isArray(role) ? role : [role];
 		if (!roles.includes(actor.role)) return false;
 	}
-	if (rule.resource && rule.resource !== context.resource) return false;
-	if (rule.operation && rule.operation !== action) return false;
-	if (rule.match) {
-		for (const [field, cond] of Object.entries(rule.match)) {
-			if (!matchCondition(context?.[field], cond as Condition, actor))
-				return false;
-		}
-	}
-	return true;
+	if (resource && resource !== context.resource) return false;
+	if (operation && operation !== action) return false;
+	return (
+		!rule.match ||
+		Object.entries(rule.match).every(([field, cond]) =>
+			matchCondition(context?.[field], cond as Condition, actor),
+		)
+	);
 };
 
 export const evaluateRules = (
@@ -117,10 +122,11 @@ export const evaluateRules = (
 	action: Operation,
 	context: Context,
 ): boolean => {
-	return rules.some((r) => {
-		if (!matchesRule(r, actor, action, context)) return false;
-		return r.rules ? evaluateRules(r.rules, actor, action, context) : true;
-	});
+	return rules.some(
+		(r) =>
+			matchesRule(r, actor, action, context) &&
+			(r.rules ? evaluateRules(r.rules, actor, action, context) : true),
+	);
 };
 
 export const checkAccess = (
