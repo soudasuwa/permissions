@@ -8,6 +8,6 @@ export {
 	type Rule,
 	evaluateRules,
 	matchCondition,
-} from "./engine.js";
+} from "./engine";
 
-export { rules } from "./rules.js";
+export { rules } from "./rules";

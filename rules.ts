@@ -1,4 +1,4 @@
-import { InvoiceStatus, Operation, Role, type Rule } from "./engine.js";
+import { InvoiceStatus, Operation, Role, type Rule } from "./engine";
 
 export const rules: readonly Rule[] = [
 	{
