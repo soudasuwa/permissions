@@ -1,178 +1,204 @@
-import test from "node:test"
+import { describe, it } from "node:test"
 import assert from "node:assert/strict"
 
 import { checkAccess } from "./index.js"
 import { rules } from "./rules.js"
 
-// Actor factory
-const actor = (role, id = "id123") => ({ role, id })
-
-const base = {
-	resource: "invoice",
-	userId: "id123",
-}
-
-// TODO use centralized mocks
 const mock = {
-	invoice: {
-		base: {
-			resource: "invoice",
-			userId: "id123",
-		},
-		status: function (status) {
-			return { ...this.base, status }
-		},
-	},
-	actor: {
-		base: {
-			id: "id123",
-		},
-		role: function (role) {
-			return { ...this.base, role }
-		},
-	},
+        invoice: {
+                base: {
+                        resource: "invoice",
+                        userId: "id123",
+                },
+                status: function (status) {
+                        return { ...this.base, status }
+                },
+        },
+        actor: {
+                base: {
+                        id: "id123",
+                },
+                role: function (role) {
+                        return { ...this.base, role }
+                },
+        },
 }
 
-// TODO Better use describe and it
-test("Invoice access control", async (t) => {
-	// ====== Module Role ======
-	await t.test("Module role", async (t) => {
-		await t.test("Can edit invoice in Generating status", () => {
-			const result = checkAccess(rules, actor("module"), "edit", {
-				...base,
-				status: "Generating",
-				payload: { status: "Draft" },
-			})
-			assert.equal(result, true)
-		})
+describe("Invoice access control", () => {
+        describe("Module role", () => {
+                it("Can edit invoice in Generating status", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("module"),
+                                "edit",
+                                {
+                                        ...mock.invoice.status("Generating"),
+                                        payload: { status: "Draft" },
+                                }
+                        )
+                        assert.equal(result, true)
+                })
 
-		await t.test("Cannot edit invoice in Draft status", () => {
-			const result = checkAccess(rules, actor("module"), "edit", {
-				...base,
-				status: "Draft",
-				payload: { status: "Pending" },
-			})
-			assert.equal(result, false)
-		})
+                it("Cannot edit invoice in Draft status", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("module"),
+                                "edit",
+                                {
+                                        ...mock.invoice.status("Draft"),
+                                        payload: { status: "Pending" },
+                                }
+                        )
+                        assert.equal(result, false)
+                })
 
-		await t.test("Cannot view Generating invoice", () => {
-			const result = checkAccess(rules, actor("module"), "view", {
-				...base,
-				status: "Generating",
-			})
-			assert.equal(result, false) // Not explicitly granted
-		})
-	})
+                it("Cannot view Generating invoice", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("module"),
+                                "view",
+                                mock.invoice.status("Generating")
+                        )
+                        assert.equal(result, false)
+                })
+        })
 
-	// ====== Admin Role ======
-	await t.test("Admin role", async (t) => {
-		await t.test("Can edit invoice in Draft status", () => {
-			const result = checkAccess(rules, actor("admin"), "edit", {
-				...base,
-				status: "Draft",
-				payload: { status: "Pending" },
-			})
-			assert.equal(result, true)
-		})
+        describe("Admin role", () => {
+                it("Can edit invoice in Draft status", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("admin"),
+                                "edit",
+                                {
+                                        ...mock.invoice.status("Draft"),
+                                        payload: { status: "Pending" },
+                                }
+                        )
+                        assert.equal(result, true)
+                })
 
-		await t.test("Can edit invoice in Pending status", () => {
-			const result = checkAccess(rules, actor("admin"), "edit", {
-				...base,
-				status: "Pending",
-				payload: { status: "Draft" },
-			})
-			assert.equal(result, true)
-		})
+                it("Can edit invoice in Pending status", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("admin"),
+                                "edit",
+                                {
+                                        ...mock.invoice.status("Pending"),
+                                        payload: { status: "Draft" },
+                                }
+                        )
+                        assert.equal(result, true)
+                })
 
-		await t.test("Cannot edit invoice in Generating status", () => {
-			const result = checkAccess(rules, actor("admin"), "edit", {
-				...base,
-				status: "Generating",
-				payload: { status: "Draft" },
-			})
-			assert.equal(result, false)
-		})
+                it("Cannot edit invoice in Generating status", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("admin"),
+                                "edit",
+                                {
+                                        ...mock.invoice.status("Generating"),
+                                        payload: { status: "Draft" },
+                                }
+                        )
+                        assert.equal(result, false)
+                })
 
-		await t.test("Can view Complete invoice", () => {
-			const result = checkAccess(rules, actor("admin"), "view", {
-				...base,
-				status: "Complete",
-			})
-			assert.equal(result, true)
-		})
+                it("Can view Complete invoice", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("admin"),
+                                "view",
+                                mock.invoice.status("Complete")
+                        )
+                        assert.equal(result, true)
+                })
 
-		await t.test("Cannot edit Complete invoice", () => {
-			const result = checkAccess(rules, actor("admin"), "edit", {
-				...base,
-				status: "Complete",
-				payload: { status: "Pending" },
-			})
-			assert.equal(result, false)
-		})
-	})
+                it("Cannot edit Complete invoice", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("admin"),
+                                "edit",
+                                {
+                                        ...mock.invoice.status("Complete"),
+                                        payload: { status: "Pending" },
+                                }
+                        )
+                        assert.equal(result, false)
+                })
+        })
 
-	// ====== Customer/User Role ======
-	await t.test("Customer role", async (t) => {
-		await t.test("Can view Pending invoice", () => {
-			const result = checkAccess(rules, actor("user", "id123"), "view", {
-				...base,
-				status: "Pending",
-			})
-			assert.equal(result, true)
-		})
+        describe("Customer role", () => {
+                it("Can view Pending invoice", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("user"),
+                                "view",
+                                mock.invoice.status("Pending")
+                        )
+                        assert.equal(result, true)
+                })
 
-		await t.test("Can pay Pending invoice", () => {
-			const result = checkAccess(rules, actor("user", "id123"), "pay", {
-				...base,
-				status: "Pending",
-			})
-			assert.equal(result, true)
-		})
+                it("Can pay Pending invoice", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("user"),
+                                "pay",
+                                mock.invoice.status("Pending")
+                        )
+                        assert.equal(result, true)
+                })
 
-		await t.test("Cannot view Draft invoice", () => {
-			const result = checkAccess(rules, actor("user", "id123"), "view", {
-				...base,
-				status: "Draft",
-			})
-			assert.equal(result, false)
-		})
+                it("Cannot view Draft invoice", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("user"),
+                                "view",
+                                mock.invoice.status("Draft")
+                        )
+                        assert.equal(result, false)
+                })
 
-		await t.test("Cannot view Generating invoice", () => {
-			const result = checkAccess(rules, actor("user", "id123"), "view", {
-				...base,
-				status: "Generating",
-			})
-			assert.equal(result, false)
-		})
+                it("Cannot view Generating invoice", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("user"),
+                                "view",
+                                mock.invoice.status("Generating")
+                        )
+                        assert.equal(result, false)
+                })
 
-		await t.test("Can view Complete invoice", () => {
-			const result = checkAccess(rules, actor("user", "id123"), "view", {
-				...base,
-				status: "Complete",
-			})
-			assert.equal(result, true)
-		})
+                it("Can view Complete invoice", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("user"),
+                                "view",
+                                mock.invoice.status("Complete")
+                        )
+                        assert.equal(result, true)
+                })
 
-		await t.test("Cannot pay Complete invoice", () => {
-			const result = checkAccess(rules, actor("user", "id123"), "pay", {
-				...base,
-				status: "Complete",
-			})
-			assert.equal(result, false)
-		})
+                it("Cannot pay Complete invoice", () => {
+                        const result = checkAccess(
+                                rules,
+                                mock.actor.role("user"),
+                                "pay",
+                                mock.invoice.status("Complete")
+                        )
+                        assert.equal(result, false)
+                })
 
-		await t.test("Cannot pay someone else's invoice", () => {
-			const result = checkAccess(
-				rules,
-				actor("user", "someone-else"),
-				"pay",
-				{
-					...base,
-					status: "Pending",
-					userId: "different-user",
-				}
-			)
-			assert.equal(result, false)
-		})
-	})
+                it("Cannot pay someone else's invoice", () => {
+                        const result = checkAccess(
+                                rules,
+                                { ...mock.actor.role("user"), id: "someone-else" },
+                                "pay",
+                                {
+                                        ...mock.invoice.status("Pending"),
+                                        userId: "different-user",
+                                }
+                        )
+                        assert.equal(result, false)
+                })
+        })
 })
