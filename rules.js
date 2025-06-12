@@ -1,77 +1,77 @@
 export const rules = [
 	{
-	role: {
-	    name: 'module',
-	    rules: [
-		{
-		    resource: {
-			name: 'invoice',
+		role: {
+			name: "module",
 			rules: [
-			    {
-				operation: 'create',
-				rules: [{ payload: { status: 'Generating' } }],
-			    },
-			    {
-				operation: 'edit',
-				rules: [
-				    {
-					status: 'Generating',
-					payload: { status: { in: ['Generating', 'Draft'] } },
-				    },
-				],
-			    },
+				{
+					resource: {
+						name: "invoice",
+						rules: [
+							{
+								operation: "create",
+								rules: [{ payload: { status: "Generating" } }],
+							},
+							{
+								operation: "edit",
+								rules: [
+									{
+										status: "Generating",
+										payload: { status: { in: ["Generating", "Draft"] } },
+									},
+								],
+							},
+						],
+					},
+				},
 			],
-		    },
 		},
-	    ],
-	},
 	},
 	{
-	role: {
-	    name: 'admin',
-	    rules: [
-		{
-		    resource: {
-			name: 'invoice',
+		role: {
+			name: "admin",
 			rules: [
-			    {
-				operation: 'create',
-				rules: [{ payload: { status: { not: 'Generating' } } }],
-			    },
-			    {
-				operation: 'edit',
-				rules: [{ status: { in: ['Draft', 'Pending'] } }],
-			    },
-			    { operation: 'view' },
-			    { operation: 'pay' },
+				{
+					resource: {
+						name: "invoice",
+						rules: [
+							{
+								operation: "create",
+								rules: [{ payload: { status: { not: "Generating" } } }],
+							},
+							{
+								operation: "edit",
+								rules: [{ status: { in: ["Draft", "Pending"] } }],
+							},
+							{ operation: "view" },
+							{ operation: "pay" },
+						],
+					},
+				},
 			],
-		    },
 		},
-	    ],
-	},
 	},
 	{
-	role: {
-	    name: 'user',
-	    rules: [
-		{
-		    resource: {
-			name: 'invoice',
+		role: {
+			name: "user",
 			rules: [
-			    {
-				operation: 'view',
-				userId: { reference: { actor: 'id' } },
-				rules: [{ status: { in: ['Pending', 'Complete'] } }],
-			    },
-			    {
-				operation: 'pay',
-				userId: { reference: { actor: 'id' } },
-				rules: [{ status: 'Pending' }],
-			    },
+				{
+					resource: {
+						name: "invoice",
+						rules: [
+							{
+								operation: "view",
+								userId: { reference: { actor: "id" } },
+								rules: [{ status: { in: ["Pending", "Complete"] } }],
+							},
+							{
+								operation: "pay",
+								userId: { reference: { actor: "id" } },
+								rules: [{ status: "Pending" }],
+							},
+						],
+					},
+				},
 			],
-		    },
 		},
-	    ],
-	},
 	},
 ];
