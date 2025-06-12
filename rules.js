@@ -1,5 +1,5 @@
 export const rules = [
-    {
+	{
 	role: {
 	    name: 'module',
 	    rules: [
@@ -25,8 +25,8 @@ export const rules = [
 		},
 	    ],
 	},
-    },
-    {
+	},
+	{
 	role: {
 	    name: 'admin',
 	    rules: [
@@ -49,8 +49,8 @@ export const rules = [
 		},
 	    ],
 	},
-    },
-    {
+	},
+	{
 	role: {
 	    name: 'user',
 	    rules: [
@@ -73,5 +73,5 @@ export const rules = [
 		},
 	    ],
 	},
-    },
+	},
 ];
