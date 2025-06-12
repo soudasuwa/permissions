@@ -5,10 +5,15 @@
 	"type": "module",
 	"main": "index.js",
 	"scripts": {
-		"test": "node ./test.js"
-	},
+		"test": "node ./test.js",
+		"lint": "biome lint .",
+		"format": "biome format ."
+		},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
-	"description": ""
+	"description": "",
+	"devDependencies": {
+		"@biomejs/biome": "^1.2.0"
+	}
 }
