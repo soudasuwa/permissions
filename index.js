@@ -1,22 +1,19 @@
-// TODO remove comments
-// TODO improve coding style and standards for modern js
-
-// Utility to deeply match a rule condition (simple matcher, can be extended)
-function matchCondition(value, condition) {
-	if (typeof condition === "object" && !Array.isArray(condition)) {
-		if ("not" in condition) return value !== condition.not
-		if ("in" in condition) return condition.in.includes(value)
-		if ("reference" in condition) return value === condition.reference.actor // only handles actor.id now
+const matchCondition = (value, condition, actor) => {
+	if (typeof condition === 'object' && !Array.isArray(condition)) {
+		if ('not' in condition) return value !== condition.not
+		if ('in' in condition) return condition.in.includes(value)
+		if ('reference' in condition)
+			return value === actor?.[condition.reference.actor]
 		return Object.keys(condition).every((key) =>
-			matchCondition(value?.[key], condition[key])
+			matchCondition(value?.[key], condition[key], actor)
 		)
 	}
 	return value === condition
 }
 
-// Core rule evaluator
-function evaluateRules(ruleList, actor, action, context = {}, depth = 0) {
-	for (const rule of ruleList) {
+const evaluateRules = (ruleList, actor, action, context = {}, depth = 0) => {
+	const RESERVED = ['role', 'roles', 'resource', 'operation', 'rules']
+	outer: for (const rule of ruleList) {
 		if (
 			rule.role &&
 			typeof rule.role === "string" &&
@@ -42,12 +39,11 @@ function evaluateRules(ruleList, actor, action, context = {}, depth = 0) {
 		}
 
 		if (rule.operation && rule.operation !== action) continue
-		if (rule.status && !matchCondition(context.status, rule.status))
-			continue
-		if (rule.payload && !matchCondition(context.payload, rule.payload))
-			continue
-		if (rule.userId && !matchCondition(context.userId, rule.userId))
-			continue
+
+		for (const [key, value] of Object.entries(rule)) {
+			if (RESERVED.includes(key)) continue
+			if (!matchCondition(context[key], value, actor)) continue outer
+		}
 
 		if (rule.rules) {
 			if (!evaluateRules(rule.rules, actor, action, context, depth + 1))
@@ -62,9 +58,7 @@ function evaluateRules(ruleList, actor, action, context = {}, depth = 0) {
 	return false
 }
 
-// Apply global top-level rules first
-export function checkAccess(rules, actor, action, context) {
-	// Extract global rules for the resource
+export const checkAccess = (rules, actor, action, context) => {
 	const topLevelResourceRules = rules.filter(
 		(r) => r.resource?.name === context.resource
 	)
@@ -73,12 +67,14 @@ export function checkAccess(rules, actor, action, context) {
 		if (
 			!evaluateRules(resourceRule.resource.rules, actor, action, context)
 		) {
-			return false // short-circuit if top-level denies
+			return false
 		}
 	}
 
-	// If top-level rules passed, check role-specific rules
-	const roleRules = rules.filter((r) => r.role?.name === actor.role)
+	const roleRules = rules
+		.filter((r) => r.role?.name === actor.role)
+		.flatMap((r) => r.role.rules ?? [])
 
 	return evaluateRules(roleRules, actor, action, context)
 }
+

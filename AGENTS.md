@@ -89,4 +89,16 @@ End-user who receives and pays invoices. Sees only finalized invoices.
 
 ```txt
 [Generating] --(module → Draft)--> [Draft] --(admin → Pending)--> [Pending] --(payment)--> [Complete]
+```
 
+---
+
+## Development Notes
+
+This project uses [Biome](https://biomejs.dev) for formatting and linting.
+Run the commands below to lint and format the code:
+
+```
+npm run lint
+npm run format
+```
