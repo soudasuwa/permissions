@@ -13,7 +13,8 @@ const matchCondition = (value, condition, actor) => {
 
 const evaluateRules = (ruleList, actor, action, context = {}, depth = 0) => {
 	const RESERVED = ["role", "roles", "resource", "operation", "rules"];
-	outer: for (const rule of ruleList) {
+
+	for (const rule of ruleList) {
 		if (rule.role && typeof rule.role === "string" && rule.role !== actor.role)
 			continue;
 		if (rule.roles && !rule.roles.includes(actor.role)) continue;
@@ -23,17 +24,23 @@ const evaluateRules = (ruleList, actor, action, context = {}, depth = 0) => {
 			if (rule.resource.rules) {
 				if (
 					!evaluateRules(rule.resource.rules, actor, action, context, depth + 1)
-				)
+				) {
 					return false;
+				}
 			}
 		}
 
 		if (rule.operation && rule.operation !== action) continue;
 
+		let ruleMatches = true;
 		for (const [key, value] of Object.entries(rule)) {
 			if (RESERVED.includes(key)) continue;
-			if (!matchCondition(context[key], value, actor)) continue outer;
+			if (!matchCondition(context[key], value, actor)) {
+				ruleMatches = false;
+				break;
+			}
 		}
+		if (!ruleMatches) continue;
 
 		if (rule.rules) {
 			if (!evaluateRules(rule.rules, actor, action, context, depth + 1))
