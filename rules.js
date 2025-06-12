@@ -9,16 +9,14 @@ export const rules = [
 						rules: [
 							{
 								operation: "create",
-								rules: [{ payload: { status: "Generating" } }],
+								match: { payload: { status: "Generating" } },
 							},
 							{
 								operation: "edit",
-								rules: [
-									{
-										status: "Generating",
-										payload: { status: { in: ["Generating", "Draft"] } },
-									},
-								],
+								match: {
+									status: "Generating",
+									payload: { status: { in: ["Generating", "Draft"] } },
+								},
 							},
 						],
 					},
@@ -36,11 +34,11 @@ export const rules = [
 						rules: [
 							{
 								operation: "create",
-								rules: [{ payload: { status: { not: "Generating" } } }],
+								match: { payload: { status: { not: "Generating" } } },
 							},
 							{
 								operation: "edit",
-								rules: [{ status: { in: ["Draft", "Pending"] } }],
+								match: { status: { in: ["Draft", "Pending"] } },
 							},
 							{ operation: "view" },
 							{ operation: "pay" },
@@ -60,13 +58,17 @@ export const rules = [
 						rules: [
 							{
 								operation: "view",
-								userId: { reference: { actor: "id" } },
-								rules: [{ status: { in: ["Pending", "Complete"] } }],
+								match: {
+									userId: { reference: { actor: "id" } },
+									status: { in: ["Pending", "Complete"] },
+								},
 							},
 							{
 								operation: "pay",
-								userId: { reference: { actor: "id" } },
-								rules: [{ status: "Pending" }],
+								match: {
+									userId: { reference: { actor: "id" } },
+									status: "Pending",
+								},
 							},
 						],
 					},
