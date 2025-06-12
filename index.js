@@ -2,8 +2,9 @@ const matchCondition = (value, condition, actor) => {
 	if (typeof condition === "object" && !Array.isArray(condition)) {
 		if ("not" in condition) return value !== condition.not;
 		if ("in" in condition) return condition.in.includes(value);
-		if ("reference" in condition)
+		if ("reference" in condition) {
 			return value === actor?.[condition.reference.actor];
+		}
 		return Object.keys(condition).every((key) =>
 			matchCondition(value?.[key], condition[key], actor),
 		);
@@ -11,9 +12,15 @@ const matchCondition = (value, condition, actor) => {
 	return value === condition;
 };
 
-const evaluateRules = (ruleList, actor, action, context = {}, depth = 0) => {
-	const RESERVED = ["role", "roles", "resource", "operation", "rules"];
-	outer: for (const rule of ruleList) {
+const matchesRule = (rule, context, actor) => {
+	if (!rule.match) return true;
+	return Object.entries(rule.match).every(([key, cond]) =>
+		matchCondition(context?.[key], cond, actor),
+	);
+};
+
+const evaluateRules = (ruleList, actor, action, context = {}) => {
+	for (const rule of ruleList) {
 		if (rule.role && typeof rule.role === "string" && rule.role !== actor.role)
 			continue;
 		if (rule.roles && !rule.roles.includes(actor.role)) continue;
@@ -21,26 +28,21 @@ const evaluateRules = (ruleList, actor, action, context = {}, depth = 0) => {
 		if (rule.resource && typeof rule.resource === "object") {
 			if (rule.resource.name !== context.resource) continue;
 			if (rule.resource.rules) {
-				if (
-					!evaluateRules(rule.resource.rules, actor, action, context, depth + 1)
-				)
+				if (!evaluateRules(rule.resource.rules, actor, action, context)) {
 					return false;
+				}
 			}
 		}
 
 		if (rule.operation && rule.operation !== action) continue;
 
-		for (const [key, value] of Object.entries(rule)) {
-			if (RESERVED.includes(key)) continue;
-			if (!matchCondition(context[key], value, actor)) continue outer;
-		}
+		if (!matchesRule(rule, context, actor)) continue;
 
 		if (rule.rules) {
-			if (!evaluateRules(rule.rules, actor, action, context, depth + 1))
-				continue;
+			if (!evaluateRules(rule.rules, actor, action, context)) continue;
 		}
 
-		if (rule.operation === action || !rule.operation) {
+		if (!rule.operation || rule.operation === action) {
 			return true;
 		}
 	}
@@ -49,14 +51,16 @@ const evaluateRules = (ruleList, actor, action, context = {}, depth = 0) => {
 };
 
 export const checkAccess = (rules, actor, action, context) => {
-	const topLevelResourceRules = rules.filter(
+	const resourceRules = rules.filter(
 		(r) => r.resource?.name === context.resource,
 	);
 
-	for (const resourceRule of topLevelResourceRules) {
-		if (!evaluateRules(resourceRule.resource.rules, actor, action, context)) {
-			return false;
-		}
+	if (
+		resourceRules.some(
+			(rr) => !evaluateRules(rr.resource.rules ?? [], actor, action, context),
+		)
+	) {
+		return false;
 	}
 
 	const roleRules = rules
