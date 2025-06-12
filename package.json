@@ -3,11 +3,12 @@
 	"name": "permissions",
 	"version": "0.0.1",
 	"type": "module",
-	"main": "index.js",
+	"main": "dist/index.js",
 	"scripts": {
 		"test": "node ./test.js",
 		"lint": "npx @biomejs/biome lint --write",
-		"format": "npx @biomejs/biome format --write"
+		"format": "npx @biomejs/biome format --write",
+		"build": "tsc"
 	},
 	"keywords": [],
 	"author": "",

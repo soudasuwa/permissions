@@ -1,8 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { checkAccess } from "./index.js";
-import { rules } from "./rules.js";
+import { checkAccess } from "./dist/index.js";
+import { rules } from "./dist/rules.js";
 
 const mock = {
 	invoice: {
