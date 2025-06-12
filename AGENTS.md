@@ -102,3 +102,10 @@ Run the commands below to lint and format the code:
 npm run lint
 npm run format
 ```
+
+After formatting and linting, compile the TypeScript sources and run the tests:
+
+```
+npm run build
+npm test
+```
