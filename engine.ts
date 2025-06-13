@@ -155,13 +155,6 @@ export class RuleEngine {
 	}
 }
 
-export const evaluateRules = (
-	rules: readonly Rule[],
-	actor: Actor,
-	action: Operation,
-	context: Context,
-): boolean => new RuleEngine(rules).checkAccess(actor, action, context);
-
 export const checkAccess = (
 	rules: readonly Rule[],
 	actor: Actor,
