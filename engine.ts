@@ -94,13 +94,14 @@ export const matchCondition = (
 	return value === condition;
 };
 
-export const matchesRule = (
-	rule: Rule,
+export const matchesMeta = (
+	meta: RuleMeta | undefined,
 	actor: Actor,
 	action: Operation,
 	context: Context,
 ): boolean => {
-	const { role, resource, operation } = rule.meta ?? {};
+	if (!meta) return true;
+	const { role, resource, operation } = meta;
 
 	if (role) {
 		const roles = Array.isArray(role) ? role : [role];
@@ -108,6 +109,16 @@ export const matchesRule = (
 	}
 	if (resource && resource !== context.resource) return false;
 	if (operation && operation !== action) return false;
+	return true;
+};
+
+export const matchesRule = (
+	rule: Rule,
+	actor: Actor,
+	action: Operation,
+	context: Context,
+): boolean => {
+	if (!matchesMeta(rule.meta, actor, action, context)) return false;
 	return (
 		!rule.match ||
 		Object.entries(rule.match).every(([field, cond]) =>
@@ -116,22 +127,44 @@ export const matchesRule = (
 	);
 };
 
+/**
+ * Evaluates rules in an object-oriented manner to keep logic
+ * encapsulated and reusable.
+ */
+export class RuleEngine {
+	constructor(private readonly rules: readonly Rule[]) {}
+
+	/**
+	 * Determine if the given actor can perform an action on the context.
+	 */
+	checkAccess(actor: Actor, action: Operation, context: Context): boolean {
+		return this.evaluateRules(this.rules, actor, action, context);
+	}
+
+	private evaluateRules(
+		rules: readonly Rule[],
+		actor: Actor,
+		action: Operation,
+		context: Context,
+	): boolean {
+		return rules.some(
+			(r) =>
+				matchesRule(r, actor, action, context) &&
+				(r.rules ? this.evaluateRules(r.rules, actor, action, context) : true),
+		);
+	}
+}
+
 export const evaluateRules = (
 	rules: readonly Rule[],
 	actor: Actor,
 	action: Operation,
 	context: Context,
-): boolean => {
-	return rules.some(
-		(r) =>
-			matchesRule(r, actor, action, context) &&
-			(r.rules ? evaluateRules(r.rules, actor, action, context) : true),
-	);
-};
+): boolean => new RuleEngine(rules).checkAccess(actor, action, context);
 
 export const checkAccess = (
 	rules: readonly Rule[],
 	actor: Actor,
 	action: Operation,
 	context: Context,
-): boolean => evaluateRules(rules, actor, action, context);
+): boolean => new RuleEngine(rules).checkAccess(actor, action, context);
