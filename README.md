@@ -39,7 +39,9 @@ bun run build
 bun test
 ```
 
-## Usage Example
+## Examples
+
+### 1. Minimal check with `checkAccess`
 
 Below is a minimal example of using `checkAccess` to see if a user can pay their invoice:
 
@@ -80,7 +82,76 @@ const allowed = checkAccess(rules, actor, Operation.Pay, context);
 console.log(allowed); // true
 ```
 
-## Nested rules
+### 2. Reference conditions
+
+Use the `reference` helper to compare context values to properties on the actor.
+
+```ts
+import { checkAccess, type Rule } from "./index";
+
+enum Role {
+  User = "user",
+}
+
+enum Operation {
+  View = "view",
+}
+
+type Resource = "invoice";
+
+const rules: readonly Rule<Role, Operation, Resource>[] = [
+  {
+    meta: { role: Role.User, operation: Operation.View, resource: "invoice" },
+    match: { userId: { reference: { actor: "id" } } },
+  },
+];
+
+const actor = { id: "abc", role: Role.User };
+const context = { resource: "invoice", userId: "abc" };
+
+checkAccess(rules, actor, Operation.View, context); // true
+```
+
+### 3. `in` and `not` conditions
+
+The engine understands both inclusion lists and negated matches.
+
+```ts
+import { checkAccess, type Rule } from "./index";
+
+enum Role {
+  Admin = "admin",
+}
+
+enum Operation {
+  Edit = "edit",
+}
+
+enum InvoiceStatus {
+  Draft = "Draft",
+  Pending = "Pending",
+  Complete = "Complete",
+}
+
+type Resource = "invoice";
+
+const rules: readonly Rule<Role, Operation, Resource>[] = [
+  {
+    meta: { role: Role.Admin, operation: Operation.Edit, resource: "invoice" },
+    match: { status: { in: [InvoiceStatus.Draft, InvoiceStatus.Pending] } },
+  },
+  {
+    meta: { role: Role.Admin, operation: Operation.Edit, resource: "invoice" },
+    match: { status: { not: InvoiceStatus.Complete } },
+  },
+];
+
+const actor = { id: "1", role: Role.Admin };
+checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Draft }); // true
+checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Complete }); // false
+```
+
+### 4. Nested rules
 
 Rules can be nested to express complex permission trees. `RuleEngine` traverses these `rules` arrays recursively.
 
@@ -100,4 +171,33 @@ export const nestedRules: readonly Rule<Role, Operation, Resource>[] = [
     ],
   },
 ];
+```
+
+### 5. Reusing a `RuleEngine` instance
+
+For repeated checks you can create a `RuleEngine` once and reuse it.
+
+```ts
+import { RuleEngine, type Rule } from "./index";
+
+enum Role {
+  Admin = "admin",
+}
+
+enum Operation {
+  View = "view",
+}
+
+type Resource = "invoice";
+
+const rules: readonly Rule<Role, Operation, Resource>[] = [
+  { meta: { role: Role.Admin, operation: Operation.View, resource: "invoice" } },
+];
+
+const engine = new RuleEngine(rules);
+
+const actor = { id: "42", role: Role.Admin };
+const ctx = { resource: "invoice" };
+
+engine.checkAccess(actor, Operation.View, ctx); // true
 ```
