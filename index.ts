@@ -7,7 +7,6 @@ export {
 	type Actor,
 	type Context,
 	type Rule,
-	evaluateRules,
 	matchCondition,
 } from "./engine";
 

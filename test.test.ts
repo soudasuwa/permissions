@@ -201,6 +201,77 @@ describe("Invoice access control", () => {
 		});
 	});
 
+	describe("Module create permission", () => {
+		it("Can create invoice when payload.status is Generating", () => {
+			const result = checkAccess(
+				rules,
+				mock.actor.role("module"),
+				Operation.Create,
+				{
+					...mock.invoice.status("Generating"),
+					payload: { status: "Generating" },
+				},
+			);
+			expect(result).toBe(true);
+		});
+
+		it("Cannot create invoice when payload.status is not Generating", () => {
+			const result = checkAccess(
+				rules,
+				mock.actor.role("module"),
+				Operation.Create,
+				{
+					...mock.invoice.status("Draft"),
+					payload: { status: "Draft" },
+				},
+			);
+			expect(result).toBe(false);
+		});
+	});
+
+	describe("Admin create permission", () => {
+		it("Can create invoice when payload.status is not Generating", () => {
+			const result = checkAccess(
+				rules,
+				mock.actor.role("admin"),
+				Operation.Create,
+				{
+					...mock.invoice.status("Draft"),
+					payload: { status: "Draft" },
+				},
+			);
+			expect(result).toBe(true);
+		});
+
+		it("Cannot create invoice when payload.status is Generating", () => {
+			const result = checkAccess(
+				rules,
+				mock.actor.role("admin"),
+				Operation.Create,
+				{
+					...mock.invoice.status("Generating"),
+					payload: { status: "Generating" },
+				},
+			);
+			expect(result).toBe(false);
+		});
+	});
+
+	describe("User create permission", () => {
+		it("Users cannot create invoices", () => {
+			const result = checkAccess(
+				rules,
+				mock.actor.role("user"),
+				Operation.Create,
+				{
+					...mock.invoice.status("Pending"),
+					payload: { status: "Pending" },
+				},
+			);
+			expect(result).toBe(false);
+		});
+	});
+
 	describe("RuleEngine class", () => {
 		it("Delegates access checks correctly", () => {
 			const engine = new RuleEngine(rules);
