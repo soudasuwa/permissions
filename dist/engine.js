@@ -51,32 +51,13 @@ export const matchesRule = (rule, actor, action, context) => {
         Object.entries(rule.match).every(([field, cond]) => matchCondition(context?.[field], cond, actor)));
 };
 /**
- * Evaluates rules in an object-oriented manner to keep logic
- * encapsulated and reusable. A single RuleEngine instance can
- * be reused for repeated checks without re-parsing the rule set.
+ * Recursively evaluate a rules array, returning true as soon as a matching
+ * rule chain is found.
  */
-export class RuleEngine {
-    rules;
-    constructor(rules) {
-        this.rules = rules;
-    }
-    /**
-     * Determine if the given actor can perform an action on the context.
-     */
-    checkAccess(actor, action, context) {
-        return this.evaluateRules(this.rules, actor, action, context);
-    }
-    /**
-     * Evaluate a rules array recursively, returning true as soon
-     * as a matching rule chain is found.
-     */
-    evaluateRules(rules, actor, action, context) {
-        return rules.some((r) => matchesRule(r, actor, action, context) &&
-            (r.rules ? this.evaluateRules(r.rules, actor, action, context) : true));
-    }
-}
+export const evaluateRules = (rules, actor, action, context) => rules.some((r) => matchesRule(r, actor, action, context) &&
+    (r.rules ? evaluateRules(r.rules, actor, action, context) : true));
 /**
- * Convenience function for one-off access checks. It creates a
- * temporary RuleEngine instance under the hood.
+ * Convenience function for one-off access checks. It evaluates the rule set
+ * directly without the need for a `RuleEngine` instance.
  */
-export const checkAccess = (rules, actor, action, context) => new RuleEngine(rules).checkAccess(actor, action, context);
+export const checkAccess = (rules, actor, action, context) => evaluateRules(rules, actor, action, context);

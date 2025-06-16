@@ -134,7 +134,7 @@ checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: Invoice
 
 ### 4. Nested rules
 
-Rules can be nested to express complex permission trees. `RuleEngine` traverses these `rules` arrays recursively.
+Rules can be nested to express complex permission trees. `checkAccess` traverses these `rules` arrays recursively.
 
 ```ts
 import { Rule } from "@soudasuwa/permissions";
@@ -154,12 +154,12 @@ export const nestedRules: readonly Rule<Role, Operation, Resource>[] = [
 ];
 ```
 
-### 5. Reusing a `RuleEngine` instance
+### 5. Repeated checks
 
-For repeated checks you can create a `RuleEngine` once and reuse it.
+`checkAccess` can be called multiple times with the same rule set.
 
 ```ts
-import { RuleEngine, type Rule } from "@soudasuwa/permissions";
+import { checkAccess, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   Admin = "admin",
@@ -175,10 +175,8 @@ const rules: readonly Rule<Role, Operation, Resource>[] = [
   { meta: { role: Role.Admin, operation: Operation.View, resource: "invoice" } },
 ];
 
-const engine = new RuleEngine(rules);
-
 const actor = { id: "42", role: Role.Admin };
 const ctx = { resource: "invoice" };
 
-engine.checkAccess(actor, Operation.View, ctx); // true
+checkAccess(rules, actor, Operation.View, ctx); // true
 ```

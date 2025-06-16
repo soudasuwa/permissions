@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 
-import { checkAccess, RuleEngine } from "../../src/index";
+import { checkAccess } from "../../src/index";
 import { rules, Operation } from "./rules";
 
 const mock = {
@@ -269,18 +269,6 @@ describe("Invoice access control", () => {
 				},
 			);
 			expect(result).toBe(false);
-		});
-	});
-
-	describe("RuleEngine class", () => {
-		it("Delegates access checks correctly", () => {
-			const engine = new RuleEngine(rules);
-			const result = engine.checkAccess(
-				mock.actor.role("admin"),
-				Operation.View,
-				mock.invoice.status("Complete"),
-			);
-			expect(result).toBe(true);
 		});
 	});
 });

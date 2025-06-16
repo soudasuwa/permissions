@@ -3,7 +3,6 @@ import {
 	matchCondition,
 	matchesMeta,
 	matchesRule,
-	RuleEngine,
 	checkAccess,
 	type Actor,
 	type Context,
@@ -192,13 +191,6 @@ describe("checkAccess simple", () => {
 	it("rejects mismatched meta", () => {
 		expect(checkAccess(rules, actor, Operation.Edit, ctx)).toBe(false);
 	});
-
-	it("matches RuleEngine results", () => {
-		const engine = new RuleEngine(rules);
-		expect(engine.checkAccess(actor, Operation.View, ctx)).toBe(
-			checkAccess(rules, actor, Operation.View, ctx),
-		);
-	});
 });
 
 // ---------------- Integration tests ----------------
@@ -280,27 +272,31 @@ describe("advanced nested rules", () => {
 			],
 		},
 	];
-	const engine = new RuleEngine(advancedRules);
-
 	it("admin can view invoice", () => {
 		const ctx = { resource: "invoice" } as const;
-		expect(engine.checkAccess(dummyActor, Operation.View, ctx)).toBe(true);
+		expect(checkAccess(advancedRules, dummyActor, Operation.View, ctx)).toBe(
+			true,
+		);
 	});
 
 	it("admin can edit draft invoice", () => {
 		const ctx = { resource: "invoice", status: Status.Draft } as const;
-		expect(engine.checkAccess(dummyActor, Operation.Edit, ctx)).toBe(true);
+		expect(checkAccess(advancedRules, dummyActor, Operation.Edit, ctx)).toBe(
+			true,
+		);
 	});
 
 	it("admin cannot edit pending invoice", () => {
 		const ctx = { resource: "invoice", status: Status.Pending } as const;
-		expect(engine.checkAccess(dummyActor, Operation.Edit, ctx)).toBe(false);
+		expect(checkAccess(advancedRules, dummyActor, Operation.Edit, ctx)).toBe(
+			false,
+		);
 	});
 
 	it("fails when role mismatch", () => {
 		const user: Actor<Role> = { id: "2", role: Role.User };
 		const ctx = { resource: "invoice" } as const;
-		expect(engine.checkAccess(user, Operation.View, ctx)).toBe(false);
+		expect(checkAccess(advancedRules, user, Operation.View, ctx)).toBe(false);
 	});
 });
 
