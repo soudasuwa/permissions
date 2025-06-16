@@ -14,6 +14,14 @@
 	"author": "Alessandro Delass <alessandro@delass.ee>",
 	"license": "ISC",
 	"description": "A small access control engine",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/soudasuwa/permissions.git"
+	},
+	"bugs": {
+		"url": "https://github.com/soudasuwa/permissions/issues"
+	},
+	"homepage": "https://github.com/soudasuwa/permissions#readme",
 	"devDependencies": {
 		"@types/bun": "latest",
 		"@biomejs/biome": "1.9.4",
