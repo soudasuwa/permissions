@@ -217,3 +217,80 @@ describe("RuleEngine integration", () => {
 		);
 	});
 });
+
+describe("matchCondition additional primitives", () => {
+	it("handles numbers", () => {
+		expect(matchCondition(5, 5, dummyActor)).toBe(true);
+	});
+
+	it("handles booleans", () => {
+		expect(matchCondition(true, true, dummyActor)).toBe(true);
+	});
+
+	it("supports numbers in 'in' lists", () => {
+		expect(matchCondition(2, { in: [1, 2, 3] }, dummyActor)).toBe(true);
+	});
+
+	it("handles mixed nested conditions", () => {
+		const value = { foo: 10, bar: false };
+		const cond = { foo: { not: 0 }, bar: { in: [false] } };
+		expect(matchCondition(value, cond, dummyActor)).toBe(true);
+	});
+});
+
+describe("RuleEngine advanced scenarios", () => {
+	const advancedRules: readonly Rule<Role, Operation, Resource>[] = [
+		{
+			meta: { role: Role.Admin },
+			rules: [
+				{
+					meta: { resource: "invoice" },
+					rules: [
+						{ meta: { operation: Operation.View } },
+						{
+							meta: { operation: Operation.Edit },
+							match: { status: Status.Draft },
+						},
+					],
+				},
+			],
+		},
+	];
+	const engine = new RuleEngine(advancedRules);
+
+	it("admin can view invoice", () => {
+		const ctx = { resource: "invoice" } as const;
+		expect(engine.checkAccess(dummyActor, Operation.View, ctx)).toBe(true);
+	});
+
+	it("admin can edit draft invoice", () => {
+		const ctx = { resource: "invoice", status: Status.Draft } as const;
+		expect(engine.checkAccess(dummyActor, Operation.Edit, ctx)).toBe(true);
+	});
+
+	it("admin cannot edit pending invoice", () => {
+		const ctx = { resource: "invoice", status: Status.Pending } as const;
+		expect(engine.checkAccess(dummyActor, Operation.Edit, ctx)).toBe(false);
+	});
+
+	it("fails when role mismatch", () => {
+		const user: Actor<Role> = { id: "2", role: Role.User };
+		const ctx = { resource: "invoice" } as const;
+		expect(engine.checkAccess(user, Operation.View, ctx)).toBe(false);
+	});
+});
+
+describe("additional helpers", () => {
+	it("matchesRule returns true without match block", () => {
+		const rule: Rule<Role, Operation, Resource> = {
+			meta: { role: Role.Admin },
+		};
+		const ctx = { resource: "invoice" } as const;
+		expect(matchesRule(rule, dummyActor, Operation.View, ctx)).toBe(true);
+	});
+
+	it("checkAccess returns false when no rules provided", () => {
+		const ctx = { resource: "invoice" } as const;
+		expect(checkAccess([], dummyActor, Operation.View, ctx)).toBe(false);
+	});
+});
