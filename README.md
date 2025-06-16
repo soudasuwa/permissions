@@ -2,27 +2,8 @@
 
 This repository provides a small rules engine for controlling access to invoice actions. It defines roles and policies so that only the proper actor can create, view, edit or pay an invoice depending on its current status.
 
-## Roles and Capabilities
+See `examples/invoice` for a complete demo of these rules in action.
 
-### Module (`role: module`)
-- **create** – only when the payload sets `status: Generating`.
-- **edit** – only invoices in the `Generating` state and the payload status remains `Generating` or `Draft`.
-- **view** – not allowed.
-- **pay** – not allowed.
-
-### Administration (`role: admin`)
-- **create** – may create invoices so long as the payload status is not `Generating`.
-- **edit** – allowed while the invoice status is `Draft` or `Pending`.
-- **view** – always allowed.
-- **pay** – allowed when the invoice is `Pending` to record manual payments.
-
-### Customer (`role: user`)
-- **view** – allowed when `status` is `Pending` or `Complete` and the invoice `userId` matches the actor.
-- **pay** – allowed for invoices in `Pending` that belong to the user.
-
-Complete invoices are read-only for every role; no one can edit them once paid.
-
-The engine checks the parent rule first and then evaluates each nested rule in turn.
 ## Development
 
 Format and lint the code using [Biome](https://biomejs.dev):
@@ -46,7 +27,7 @@ bun test
 Below is a minimal example of using `checkAccess` to see if a user can pay their invoice:
 
 ```ts
-import { checkAccess, type Rule } from "./index";
+import { checkAccess, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   Admin = "admin",
@@ -87,7 +68,7 @@ console.log(allowed); // true
 Use the `reference` helper to compare context values to properties on the actor.
 
 ```ts
-import { checkAccess, type Rule } from "./index";
+import { checkAccess, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   User = "user",
@@ -117,7 +98,7 @@ checkAccess(rules, actor, Operation.View, context); // true
 The engine understands both inclusion lists and negated matches.
 
 ```ts
-import { checkAccess, type Rule } from "./index";
+import { checkAccess, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   Admin = "admin",
@@ -156,7 +137,7 @@ checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: Invoice
 Rules can be nested to express complex permission trees. `RuleEngine` traverses these `rules` arrays recursively.
 
 ```ts
-import { Rule } from "./index";
+import { Rule } from "@soudasuwa/permissions";
 
 export const nestedRules: readonly Rule<Role, Operation, Resource>[] = [
   {
@@ -178,7 +159,7 @@ export const nestedRules: readonly Rule<Role, Operation, Resource>[] = [
 For repeated checks you can create a `RuleEngine` once and reuse it.
 
 ```ts
-import { RuleEngine, type Rule } from "./index";
+import { RuleEngine, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   Admin = "admin",

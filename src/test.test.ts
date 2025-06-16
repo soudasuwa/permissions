@@ -1,286 +1,219 @@
 import { describe, it, expect } from "bun:test";
+import {
+	matchCondition,
+	matchesMeta,
+	matchesRule,
+	RuleEngine,
+	checkAccess,
+	type Actor,
+	type Context,
+	type Rule,
+} from "./engine";
 
-import { checkAccess, RuleEngine } from "./index";
-import { rules, Operation } from "./rules.test";
+enum Role {
+	Admin = "admin",
+	Module = "module",
+	User = "user",
+}
 
-const mock = {
-	invoice: {
-		base: {
+enum Operation {
+	Create = "create",
+	Edit = "edit",
+	View = "view",
+	Pay = "pay",
+}
+
+enum Status {
+	Generating = "Generating",
+	Draft = "Draft",
+	Pending = "Pending",
+	Complete = "Complete",
+}
+
+type Resource = "invoice";
+
+const dummyActor: Actor<Role> = { id: "1", role: Role.Admin };
+
+const complexRules: readonly Rule<Role, Operation, Resource>[] = [
+	{
+		meta: { resource: "invoice" },
+		rules: [
+			{
+				meta: { role: [Role.Admin, Role.Module], operation: Operation.Edit },
+				match: { status: { not: Status.Complete } },
+			},
+			{
+				meta: { role: Role.Module, operation: Operation.Create },
+				match: { payload: { status: Status.Generating } },
+			},
+			{
+				meta: { role: Role.User },
+				match: {
+					userId: { reference: { actor: "id" } },
+					status: { in: [Status.Pending, Status.Complete] },
+				},
+				rules: [
+					{ meta: { operation: Operation.View } },
+					{
+						meta: { operation: Operation.Pay },
+						match: { status: Status.Pending },
+					},
+				],
+			},
+		],
+	},
+];
+
+describe("matchCondition", () => {
+	it("handles primitives", () => {
+		expect(matchCondition("a", "a", dummyActor)).toBe(true);
+	});
+
+	it("handles not", () => {
+		expect(matchCondition("a", { not: "b" }, dummyActor)).toBe(true);
+		expect(matchCondition("a", { not: "a" }, dummyActor)).toBe(false);
+	});
+
+	it("handles in", () => {
+		expect(matchCondition("a", { in: ["a", "b"] }, dummyActor)).toBe(true);
+	});
+
+	it("handles references", () => {
+		const actor = { id: "42", role: Role.User };
+		expect(matchCondition("42", { reference: { actor: "id" } }, actor)).toBe(
+			true,
+		);
+	});
+
+	it("handles nested objects", () => {
+		const value = { foo: { bar: "baz" } };
+		const cond = { foo: { bar: { not: "qux" } } };
+		expect(matchCondition(value, cond, dummyActor)).toBe(true);
+	});
+});
+
+describe("matchesMeta", () => {
+	const ctx: Context<Resource> = { resource: "invoice" };
+	const actor: Actor<Role> = { id: "1", role: Role.Admin };
+
+	it("accepts undefined", () => {
+		expect(matchesMeta(undefined, actor, Operation.View, ctx)).toBe(true);
+	});
+
+	it("matches role arrays", () => {
+		const meta = {
+			role: [Role.User, Role.Admin],
+			operation: Operation.View,
 			resource: "invoice",
-			userId: "id123",
-		},
-		status: function (status: string) {
-			return { ...this.base, status };
-		},
-	},
-	actor: {
-		base: {
-			id: "id123",
-		},
-		role: function (role: string) {
-			return { ...this.base, role };
-		},
-	},
-};
-
-describe("Invoice access control", () => {
-	describe("Module role", () => {
-		it("Can edit invoice in Generating status", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("module"),
-				Operation.Edit,
-				{
-					...mock.invoice.status("Generating"),
-					payload: { status: "Draft" },
-				},
-			);
-			expect(result).toBe(true);
-		});
-
-		it("Cannot edit invoice in Draft status", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("module"),
-				Operation.Edit,
-				{
-					...mock.invoice.status("Draft"),
-					payload: { status: "Pending" },
-				},
-			);
-			expect(result).toBe(false);
-		});
-
-		it("Cannot view Generating invoice", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("module"),
-				Operation.View,
-				mock.invoice.status("Generating"),
-			);
-			expect(result).toBe(false);
-		});
+		} as const;
+		expect(matchesMeta(meta, actor, Operation.View, ctx)).toBe(true);
 	});
 
-	describe("Admin role", () => {
-		it("Can edit invoice in Draft status", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("admin"),
-				Operation.Edit,
-				{
-					...mock.invoice.status("Draft"),
-					payload: { status: "Pending" },
-				},
-			);
-			expect(result).toBe(true);
-		});
-
-		it("Can edit invoice in Pending status", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("admin"),
-				Operation.Edit,
-				{
-					...mock.invoice.status("Pending"),
-					payload: { status: "Draft" },
-				},
-			);
-			expect(result).toBe(true);
-		});
-
-		it("Cannot edit invoice in Generating status", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("admin"),
-				Operation.Edit,
-				{
-					...mock.invoice.status("Generating"),
-					payload: { status: "Draft" },
-				},
-			);
-			expect(result).toBe(false);
-		});
-
-		it("Can view Complete invoice", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("admin"),
-				Operation.View,
-				mock.invoice.status("Complete"),
-			);
-			expect(result).toBe(true);
-		});
-
-		it("Cannot edit Complete invoice", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("admin"),
-				Operation.Edit,
-				{
-					...mock.invoice.status("Complete"),
-					payload: { status: "Pending" },
-				},
-			);
-			expect(result).toBe(false);
-		});
+	it("rejects wrong role", () => {
+		const meta = { role: Role.User } as const;
+		expect(matchesMeta(meta, actor, Operation.View, ctx)).toBe(false);
 	});
 
-	describe("Customer role", () => {
-		it("Can view Pending invoice", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("user"),
-				Operation.View,
-				mock.invoice.status("Pending"),
-			);
-			expect(result).toBe(true);
-		});
-
-		it("Can pay Pending invoice", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("user"),
-				Operation.Pay,
-				mock.invoice.status("Pending"),
-			);
-			expect(result).toBe(true);
-		});
-
-		it("Cannot view Draft invoice", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("user"),
-				Operation.View,
-				mock.invoice.status("Draft"),
-			);
-			expect(result).toBe(false);
-		});
-
-		it("Cannot view Generating invoice", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("user"),
-				Operation.View,
-				mock.invoice.status("Generating"),
-			);
-			expect(result).toBe(false);
-		});
-
-		it("Can view Complete invoice", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("user"),
-				Operation.View,
-				mock.invoice.status("Complete"),
-			);
-			expect(result).toBe(true);
-		});
-
-		it("Cannot pay Complete invoice", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("user"),
-				Operation.Pay,
-				mock.invoice.status("Complete"),
-			);
-			expect(result).toBe(false);
-		});
-
-		it("Cannot pay someone else's invoice", () => {
-			const result = checkAccess(
-				rules,
-				{ ...mock.actor.role("user"), id: "someone-else" },
-				Operation.Pay,
-				{
-					...mock.invoice.status("Pending"),
-					userId: "different-user",
-				},
-			);
-			expect(result).toBe(false);
-		});
+	it("rejects wrong resource", () => {
+		const meta = { resource: "other" as Resource };
+		expect(matchesMeta(meta, actor, Operation.View, ctx)).toBe(false);
 	});
 
-	describe("Module create permission", () => {
-		it("Can create invoice when payload.status is Generating", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("module"),
-				Operation.Create,
-				{
-					...mock.invoice.status("Generating"),
-					payload: { status: "Generating" },
-				},
-			);
-			expect(result).toBe(true);
-		});
+	it("rejects wrong operation", () => {
+		const meta = { operation: Operation.Edit };
+		expect(matchesMeta(meta, actor, Operation.View, ctx)).toBe(false);
+	});
+});
 
-		it("Cannot create invoice when payload.status is not Generating", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("module"),
-				Operation.Create,
-				{
-					...mock.invoice.status("Draft"),
-					payload: { status: "Draft" },
-				},
-			);
-			expect(result).toBe(false);
-		});
+describe("matchesRule", () => {
+	const actor: Actor<Role> = { id: "1", role: Role.Admin };
+	const ctx = { resource: "invoice", status: Status.Pending } as const;
+	const rule: Rule<Role, Operation, Resource> = {
+		meta: { role: Role.Admin, operation: Operation.View, resource: "invoice" },
+		match: { status: Status.Pending },
+	};
+
+	it("returns true when meta and match pass", () => {
+		expect(matchesRule(rule, actor, Operation.View, ctx)).toBe(true);
 	});
 
-	describe("Admin create permission", () => {
-		it("Can create invoice when payload.status is not Generating", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("admin"),
-				Operation.Create,
-				{
-					...mock.invoice.status("Draft"),
-					payload: { status: "Draft" },
-				},
-			);
-			expect(result).toBe(true);
-		});
+	it("returns false when match fails", () => {
+		expect(
+			matchesRule(rule, actor, Operation.View, {
+				...ctx,
+				status: Status.Complete,
+			}),
+		).toBe(false);
+	});
+});
 
-		it("Cannot create invoice when payload.status is Generating", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("admin"),
-				Operation.Create,
-				{
-					...mock.invoice.status("Generating"),
-					payload: { status: "Generating" },
-				},
-			);
-			expect(result).toBe(false);
-		});
+describe("RuleEngine integration", () => {
+	const admin: Actor<Role> = { id: "a", role: Role.Admin };
+	const moduleActor: Actor<Role> = { id: "m", role: Role.Module };
+	const user: Actor<Role> = { id: "u1", role: Role.User };
+	const otherUser: Actor<Role> = { id: "u2", role: Role.User };
+
+	it("admin can edit draft invoice", () => {
+		const ctx = { resource: "invoice", status: Status.Draft } as const;
+		expect(checkAccess(complexRules, admin, Operation.Edit, ctx)).toBe(true);
 	});
 
-	describe("User create permission", () => {
-		it("Users cannot create invoices", () => {
-			const result = checkAccess(
-				rules,
-				mock.actor.role("user"),
-				Operation.Create,
-				{
-					...mock.invoice.status("Pending"),
-					payload: { status: "Pending" },
-				},
-			);
-			expect(result).toBe(false);
-		});
+	it("admin cannot edit complete invoice", () => {
+		const ctx = { resource: "invoice", status: Status.Complete } as const;
+		expect(checkAccess(complexRules, admin, Operation.Edit, ctx)).toBe(false);
 	});
 
-	describe("RuleEngine class", () => {
-		it("Delegates access checks correctly", () => {
-			const engine = new RuleEngine(rules);
-			const result = engine.checkAccess(
-				mock.actor.role("admin"),
-				Operation.View,
-				mock.invoice.status("Complete"),
-			);
-			expect(result).toBe(true);
-		});
+	it("module can create generating invoice", () => {
+		const ctx = {
+			resource: "invoice",
+			status: Status.Generating,
+			payload: { status: Status.Generating },
+		} as const;
+		expect(checkAccess(complexRules, moduleActor, Operation.Create, ctx)).toBe(
+			true,
+		);
+	});
+
+	it("module cannot create draft invoice", () => {
+		const ctx = {
+			resource: "invoice",
+			status: Status.Draft,
+			payload: { status: Status.Draft },
+		} as const;
+		expect(checkAccess(complexRules, moduleActor, Operation.Create, ctx)).toBe(
+			false,
+		);
+	});
+
+	it("user can view own pending invoice", () => {
+		const ctx = {
+			resource: "invoice",
+			status: Status.Pending,
+			userId: "u1",
+		} as const;
+		expect(checkAccess(complexRules, user, Operation.View, ctx)).toBe(true);
+	});
+
+	it("user cannot pay someone else's invoice", () => {
+		const ctx = {
+			resource: "invoice",
+			status: Status.Pending,
+			userId: "u1",
+		} as const;
+		expect(checkAccess(complexRules, otherUser, Operation.Pay, ctx)).toBe(
+			false,
+		);
+	});
+
+	it("RuleEngine instance matches checkAccess", () => {
+		const engine = new RuleEngine(complexRules);
+		const ctx = {
+			resource: "invoice",
+			status: Status.Pending,
+			userId: "u1",
+		} as const;
+		expect(engine.checkAccess(user, Operation.View, ctx)).toBe(
+			checkAccess(complexRules, user, Operation.View, ctx),
+		);
 	});
 });
