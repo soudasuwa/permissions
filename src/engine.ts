@@ -1,5 +1,5 @@
-import type { Actor, Context, Rule, MetaMatcher, Condition } from "./types";
-import { matchCondition } from "./conditions";
+import type { Actor, Context, Rule, MetaMatcher, Condition } from "@/types";
+import { matchCondition } from "@/conditions";
 
 export const matchesRule = <
 	M extends Record<string, unknown> = Record<string, unknown>,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 
-import { checkAccess, type MetaMatcher } from "../../src/index";
+import { checkAccess, type MetaMatcher } from "@soudasuwa/permissions";
 import { rules, Operation } from "./rules";
 
 interface StdMeta {

@@ -5,6 +5,11 @@
 		"moduleResolution": "node",
 		"strict": true,
 		"rootDir": "src",
+		"baseUrl": "src",
+		"paths": {
+			"@/*": ["*"],
+			"@soudasuwa/permissions": ["./index"]
+		},
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
 		"skipLibCheck": true,

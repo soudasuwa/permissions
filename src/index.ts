@@ -4,6 +4,6 @@ export type {
 	Rule,
 	MetaMatcher,
 	Condition,
-} from "./types";
-export { matchCondition } from "./conditions";
-export { checkAccess, matchesRule } from "./engine";
+} from "@/types";
+export { matchCondition } from "@/conditions";
+export { checkAccess, matchesRule } from "@/engine";

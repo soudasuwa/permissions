@@ -20,7 +20,7 @@ export enum InvoiceStatus {
 
 export type Resource = "invoice";
 
-import type { Rule } from "../../src/index";
+import type { Rule } from "@soudasuwa/permissions";
 
 interface StdMeta {
 	role?: Role | readonly Role[];

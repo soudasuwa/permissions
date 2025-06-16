@@ -1,4 +1,4 @@
-import type { Actor, Condition } from "./types";
+import type { Actor, Condition } from "@/types";
 /**
  * Compare a context value against the provided condition.
  *
