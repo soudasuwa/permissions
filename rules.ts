@@ -54,15 +54,15 @@ export const rules: readonly Rule[] = [
 			},
 			{
 				meta: { role: Role.User },
-				match: { userId: { reference: { actor: "id" } } },
+				match: {
+					userId: { reference: { actor: "id" } },
+					status: {
+						in: [InvoiceStatus.Pending, InvoiceStatus.Complete],
+					},
+				},
 				rules: [
 					{
 						meta: { operation: Operation.View },
-						match: {
-							status: {
-								in: [InvoiceStatus.Pending, InvoiceStatus.Complete],
-							},
-						},
 					},
 					{
 						meta: { operation: Operation.Pay },
