@@ -14,11 +14,13 @@ This repository provides a small rules engine for controlling access to invoice 
 - **create** – may create invoices so long as the payload status is not `Generating`.
 - **edit** – allowed while the invoice status is `Draft` or `Pending`.
 - **view** – always allowed.
-- **pay** – always allowed (for recording manual payments).
+- **pay** – allowed when the invoice is `Pending` to record manual payments.
 
 ### Customer (`role: user`)
 - **view** – allowed when `status` is `Pending` or `Complete` and the invoice `userId` matches the actor.
 - **pay** – allowed for invoices in `Pending` that belong to the user.
+
+Complete invoices are read-only for every role; no one can edit them once paid.
 
 The engine checks the parent rule first and then evaluates each nested rule in turn.
 ## Development
