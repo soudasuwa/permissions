@@ -28,15 +28,15 @@ The engine checks the parent rule first and then evaluates each nested rule in t
 Format and lint the code using [Biome](https://biomejs.dev):
 
 ```bash
-npm run lint
-npm run format
+bun run lint
+bun run format
 ```
 
 Build the TypeScript files and run the tests (uses Bun):
 
 ```bash
-npm run build
-npm test
+bun run build
+bun test
 ```
 
 ## Usage Example

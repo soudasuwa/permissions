@@ -9,5 +9,3 @@ export {
 	type Rule,
 	matchCondition,
 } from "./engine";
-
-export { rules } from "./rules";

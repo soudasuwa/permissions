@@ -4,17 +4,20 @@
 	"version": "0.0.1",
 	"type": "module",
 	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
 	"scripts": {
 		"test": "bun test test.test.ts",
-		"lint": "npx @biomejs/biome lint --write",
-		"format": "npx @biomejs/biome format --write",
-		"build": "tsc"
+		"lint": "bun x @biomejs/biome lint --write",
+		"format": "bun x @biomejs/biome format --write",
+		"build": "bun x tsc"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"description": "",
 	"devDependencies": {
-		"@biomejs/biome": "1.9.4"
-	}
+		"@biomejs/biome": "1.9.4",
+		"typescript": "^5.8.3"
+	},
+	"trustedDependencies": ["@biomejs/biome"]
 }
