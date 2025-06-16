@@ -1,4 +1,4 @@
-import { matchCondition } from "./conditions";
+import { matchCondition } from "@/conditions";
 export const matchesRule = (rule, actor, action, context, matchMeta) => {
     if (!matchMeta(rule.meta, actor, action, context))
         return false;

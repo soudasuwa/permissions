@@ -4,7 +4,7 @@ import type {
 	InCondition,
 	NotCondition,
 	ReferenceCondition,
-} from "./types";
+} from "@/types";
 
 /**
  * Compare a context value against the provided condition.
