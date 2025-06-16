@@ -22,7 +22,13 @@ export type Resource = "invoice";
 
 import type { Rule } from "../../src/engine";
 
-export const rules: readonly Rule<Role, Operation, Resource>[] = [
+interface StdMeta {
+	role?: Role | readonly Role[];
+	operation?: Operation;
+	resource?: Resource;
+}
+
+export const rules: readonly Rule<StdMeta>[] = [
 	{
 		meta: { resource: "invoice" },
 		rules: [

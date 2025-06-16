@@ -1,7 +1,26 @@
 import { describe, it, expect } from "bun:test";
 
-import { checkAccess } from "../../src/index";
+import { checkAccess, type MetaMatcher } from "../../src/index";
 import { rules, Operation } from "./rules";
+
+interface StdMeta {
+	role?: string | readonly string[];
+	operation?: string;
+	resource?: string;
+}
+
+const matcher: MetaMatcher<StdMeta> = (meta, actor, action, context) => {
+	if (!meta) return true;
+	const { role, operation, resource } = meta;
+	if (role) {
+		const roles = Array.isArray(role) ? role : [role];
+		if (!roles.includes((actor as { role?: string }).role ?? "")) return false;
+	}
+	if (operation && operation !== action) return false;
+	if (resource && resource !== (context as { resource?: string }).resource)
+		return false;
+	return true;
+};
 
 const mock = {
 	invoice: {
@@ -34,6 +53,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Generating"),
 					payload: { status: "Draft" },
 				},
+				matcher,
 			);
 			expect(result).toBe(true);
 		});
@@ -47,6 +67,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Draft"),
 					payload: { status: "Pending" },
 				},
+				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -57,6 +78,7 @@ describe("Invoice access control", () => {
 				mock.actor.role("module"),
 				Operation.View,
 				mock.invoice.status("Generating"),
+				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -72,6 +94,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Draft"),
 					payload: { status: "Pending" },
 				},
+				matcher,
 			);
 			expect(result).toBe(true);
 		});
@@ -85,6 +108,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Pending"),
 					payload: { status: "Draft" },
 				},
+				matcher,
 			);
 			expect(result).toBe(true);
 		});
@@ -98,6 +122,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Generating"),
 					payload: { status: "Draft" },
 				},
+				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -108,6 +133,7 @@ describe("Invoice access control", () => {
 				mock.actor.role("admin"),
 				Operation.View,
 				mock.invoice.status("Complete"),
+				matcher,
 			);
 			expect(result).toBe(true);
 		});
@@ -121,6 +147,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Complete"),
 					payload: { status: "Pending" },
 				},
+				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -133,6 +160,7 @@ describe("Invoice access control", () => {
 				mock.actor.role("user"),
 				Operation.View,
 				mock.invoice.status("Pending"),
+				matcher,
 			);
 			expect(result).toBe(true);
 		});
@@ -143,6 +171,7 @@ describe("Invoice access control", () => {
 				mock.actor.role("user"),
 				Operation.Pay,
 				mock.invoice.status("Pending"),
+				matcher,
 			);
 			expect(result).toBe(true);
 		});
@@ -153,6 +182,7 @@ describe("Invoice access control", () => {
 				mock.actor.role("user"),
 				Operation.View,
 				mock.invoice.status("Draft"),
+				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -163,6 +193,7 @@ describe("Invoice access control", () => {
 				mock.actor.role("user"),
 				Operation.View,
 				mock.invoice.status("Generating"),
+				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -173,6 +204,7 @@ describe("Invoice access control", () => {
 				mock.actor.role("user"),
 				Operation.View,
 				mock.invoice.status("Complete"),
+				matcher,
 			);
 			expect(result).toBe(true);
 		});
@@ -183,6 +215,7 @@ describe("Invoice access control", () => {
 				mock.actor.role("user"),
 				Operation.Pay,
 				mock.invoice.status("Complete"),
+				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -196,6 +229,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Pending"),
 					userId: "different-user",
 				},
+				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -211,6 +245,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Generating"),
 					payload: { status: "Generating" },
 				},
+				matcher,
 			);
 			expect(result).toBe(true);
 		});
@@ -224,6 +259,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Draft"),
 					payload: { status: "Draft" },
 				},
+				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -239,6 +275,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Draft"),
 					payload: { status: "Draft" },
 				},
+				matcher,
 			);
 			expect(result).toBe(true);
 		});
@@ -252,6 +289,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Generating"),
 					payload: { status: "Generating" },
 				},
+				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -267,6 +305,7 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Pending"),
 					payload: { status: "Pending" },
 				},
+				matcher,
 			);
 			expect(result).toBe(false);
 		});

@@ -1,13 +1,10 @@
 export type StringLiteral = string;
 
-export interface Actor<R extends StringLiteral = StringLiteral> {
-	readonly role: R;
-	readonly id: string;
+export interface Actor {
 	readonly [key: string]: unknown;
 }
 
-export interface Context<Res extends StringLiteral = StringLiteral> {
-	readonly resource: Res;
+export interface Context {
 	readonly [key: string]: unknown;
 }
 
@@ -36,24 +33,12 @@ export type Condition =
 	| ReferenceCondition
 	| ConditionObject;
 
-export interface RuleMeta<
-	R extends StringLiteral = StringLiteral,
-	O extends StringLiteral = StringLiteral,
-	Res extends StringLiteral = StringLiteral,
-> {
-	readonly role?: R | readonly R[];
-	readonly resource?: Res;
-	readonly operation?: O;
-}
-
 export interface Rule<
-	R extends StringLiteral = StringLiteral,
-	O extends StringLiteral = StringLiteral,
-	Res extends StringLiteral = StringLiteral,
+	M extends Record<string, unknown> = Record<string, unknown>,
 > {
-	readonly meta?: RuleMeta<R, O, Res>;
+	readonly meta?: M;
 	readonly match?: Readonly<Record<string, Condition>>;
-	readonly rules?: readonly Rule<R, O, Res>[];
+	readonly rules?: readonly Rule<M>[];
 }
 
 /**
@@ -63,10 +48,10 @@ export interface Rule<
  * supports negation, inclusion lists and references to
  * the actor performing the check.
  */
-export const matchCondition = <R extends StringLiteral>(
+export const matchCondition = (
 	value: unknown,
 	condition: Condition,
-	actor: Actor<R>,
+	actor: Actor,
 ): boolean => {
 	if (condition && typeof condition === "object" && !Array.isArray(condition)) {
 		if ("not" in condition)
@@ -90,53 +75,39 @@ export const matchCondition = <R extends StringLiteral>(
 };
 
 /**
- * Determine whether a rule's meta information matches the
- * provided actor, action and context. Role arrays are
- * supported for cases where multiple roles share a rule.
- */
-export const matchesMeta = <
-	R extends StringLiteral = StringLiteral,
-	O extends StringLiteral = StringLiteral,
-	Res extends StringLiteral = StringLiteral,
->(
-	meta: RuleMeta<R, O, Res> | undefined,
-	actor: Actor<R>,
-	action: O,
-	context: Context<Res>,
-): boolean => {
-	if (!meta) return true;
-	const { role, resource, operation } = meta;
-
-	if (role) {
-		const roles = Array.isArray(role) ? role : [role];
-		if (!roles.includes(actor.role)) return false;
-	}
-	if (resource && resource !== context.resource) return false;
-	if (operation && operation !== action) return false;
-	return true;
-};
-
-/**
  * Validate that a rule applies to the given actor and context.
  *
  * Both the meta information and the optional match block must
  * succeed in order for the rule to match.
  */
+export type MetaMatcher<
+	M extends Record<string, unknown> = Record<string, unknown>,
+	A extends Actor = Actor,
+	Act = string,
+	C extends Context = Context,
+> = (meta: M | undefined, actor: A, action: Act, context: C) => boolean;
+
 export const matchesRule = <
-	R extends StringLiteral = StringLiteral,
-	O extends StringLiteral = StringLiteral,
-	Res extends StringLiteral = StringLiteral,
+	M extends Record<string, unknown> = Record<string, unknown>,
+	A extends Actor = Actor,
+	Act = string,
+	C extends Context = Context,
 >(
-	rule: Rule<R, O, Res>,
-	actor: Actor<R>,
-	action: O,
-	context: Context<Res>,
+	rule: Rule<M>,
+	actor: A,
+	action: Act,
+	context: C,
+	matchMeta: MetaMatcher<M, A, Act, C>,
 ): boolean => {
-	if (!matchesMeta(rule.meta, actor, action, context)) return false;
+	if (!matchMeta(rule.meta, actor, action, context)) return false;
 	return (
 		!rule.match ||
 		Object.entries(rule.match).every(([field, cond]) =>
-			matchCondition(context?.[field], cond as Condition, actor),
+			matchCondition(
+				(context as Record<string, unknown>)?.[field],
+				cond as Condition,
+				actor,
+			),
 		)
 	);
 };
@@ -146,19 +117,23 @@ export const matchesRule = <
  * rule chain is found.
  */
 export const evaluateRules = <
-	R extends StringLiteral = StringLiteral,
-	O extends StringLiteral = StringLiteral,
-	Res extends StringLiteral = StringLiteral,
+	M extends Record<string, unknown> = Record<string, unknown>,
+	A extends Actor = Actor,
+	Act = string,
+	C extends Context = Context,
 >(
-	rules: readonly Rule<R, O, Res>[],
-	actor: Actor<R>,
-	action: O,
-	context: Context<Res>,
+	rules: readonly Rule<M>[],
+	actor: A,
+	action: Act,
+	context: C,
+	matchMeta: MetaMatcher<M, A, Act, C>,
 ): boolean =>
 	rules.some(
 		(r) =>
-			matchesRule(r, actor, action, context) &&
-			(r.rules ? evaluateRules(r.rules, actor, action, context) : true),
+			matchesRule(r, actor, action, context, matchMeta) &&
+			(r.rules
+				? evaluateRules(r.rules, actor, action, context, matchMeta)
+				: true),
 	);
 
 /**
@@ -166,12 +141,14 @@ export const evaluateRules = <
  * directly without the need for a `RuleEngine` instance.
  */
 export const checkAccess = <
-	R extends StringLiteral = StringLiteral,
-	O extends StringLiteral = StringLiteral,
-	Res extends StringLiteral = StringLiteral,
+	M extends Record<string, unknown> = Record<string, unknown>,
+	A extends Actor = Actor,
+	Act = string,
+	C extends Context = Context,
 >(
-	rules: readonly Rule<R, O, Res>[],
-	actor: Actor<R>,
-	action: O,
-	context: Context<Res>,
-): boolean => evaluateRules(rules, actor, action, context);
+	rules: readonly Rule<M>[],
+	actor: A,
+	action: Act,
+	context: C,
+	matchMeta: MetaMatcher<M, A, Act, C>,
+): boolean => evaluateRules(rules, actor, action, context, matchMeta);
