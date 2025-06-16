@@ -6,7 +6,7 @@
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"scripts": {
-		"test": "bun test test.test.ts",
+		"test": "bun test",
 		"lint": "bun x @biomejs/biome lint --write",
 		"format": "bun x @biomejs/biome format --write",
 		"build": "bun x tsc"
@@ -16,7 +16,7 @@
 	"license": "ISC",
 	"description": "",
 	"devDependencies": {
-	    "@types/bun": "latest",
+		"@types/bun": "latest",
 		"@biomejs/biome": "1.9.4",
 		"typescript": "^5.8.3"
 	},
