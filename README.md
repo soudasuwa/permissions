@@ -1,8 +1,8 @@
-# Invoice Permissions Demo
+# Invoice Permissions Engine
 
-This repository provides a small rules engine for controlling access to invoice actions. It defines roles and policies so that only the proper actor can create, view, edit or pay an invoice depending on its current status.
+This library provides a robust rules engine for controlling access to invoice actions. It defines roles and policies so that only the proper actor can create, view, edit or pay an invoice depending on its current status.
 
-See `examples/invoice` for a complete demo of these rules in action.
+See `examples/invoice` for a complete example of these rules in action.
 
 ## Development
 
