@@ -171,30 +171,3 @@ export const nestedRules: readonly Rule<Role, Operation, Resource>[] = [
   },
 ];
 ```
-
-### 5. Repeated checks
-
-`checkAccess` can be called multiple times with the same rule set.
-
-```ts
-import { checkAccess, type Rule } from "@soudasuwa/permissions";
-
-enum Role {
-  Admin = "admin",
-}
-
-enum Operation {
-  View = "view",
-}
-
-type Resource = "invoice";
-
-const rules: readonly Rule<Meta>[] = [
-  { meta: { role: Role.Admin, operation: Operation.View, resource: "invoice" } },
-];
-
-const actor = { id: "42", role: Role.Admin };
-const ctx = { resource: "invoice" };
-
-checkAccess(rules, actor, Operation.View, ctx, matcher); // true
-```
