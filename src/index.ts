@@ -1,9 +1,9 @@
-export {
-	checkAccess,
-	type Actor,
-	type Context,
-	type Rule,
-	type MetaMatcher,
-	matchesRule,
-	matchCondition,
-} from "./engine";
+export type {
+	Actor,
+	Context,
+	Rule,
+	MetaMatcher,
+	Condition,
+} from "./types";
+export { matchCondition } from "./conditions";
+export { checkAccess, matchesRule } from "./engine";

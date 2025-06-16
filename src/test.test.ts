@@ -7,7 +7,7 @@ import {
 	type Context,
 	type Rule,
 	type MetaMatcher,
-} from "./engine";
+} from "./index";
 
 // Shared enums for the invoice scenarios
 enum Role {
