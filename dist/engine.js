@@ -1,23 +1,3 @@
-export var Role;
-(function (Role) {
-    Role["Module"] = "module";
-    Role["Admin"] = "admin";
-    Role["User"] = "user";
-})(Role || (Role = {}));
-export var Operation;
-(function (Operation) {
-    Operation["Create"] = "create";
-    Operation["Edit"] = "edit";
-    Operation["View"] = "view";
-    Operation["Pay"] = "pay";
-})(Operation || (Operation = {}));
-export var InvoiceStatus;
-(function (InvoiceStatus) {
-    InvoiceStatus["Generating"] = "Generating";
-    InvoiceStatus["Draft"] = "Draft";
-    InvoiceStatus["Pending"] = "Pending";
-    InvoiceStatus["Complete"] = "Complete";
-})(InvoiceStatus || (InvoiceStatus = {}));
 export const matchCondition = (value, condition, actor) => {
     if (condition && typeof condition === "object" && !Array.isArray(condition)) {
         if ("not" in condition)

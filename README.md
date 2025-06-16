@@ -44,14 +44,36 @@ bun test
 Below is a minimal example of using `checkAccess` to see if a user can pay their invoice:
 
 ```ts
-import { checkAccess, Operation, Role, InvoiceStatus } from "./index";
-import { rules } from "./rules";
+import { checkAccess, type Rule } from "./index";
+
+enum Role {
+  Admin = "admin",
+  User = "user",
+}
+
+enum Operation {
+  View = "view",
+  Pay = "pay",
+}
+
+enum InvoiceStatus {
+  Pending = "Pending",
+  Complete = "Complete",
+}
+
+type Resource = "invoice";
+
+const rules: readonly Rule<Role, Operation, Resource>[] = [
+  {
+    meta: { role: Role.User, operation: Operation.Pay, resource: "invoice" },
+    match: { status: InvoiceStatus.Pending },
+  },
+];
 
 const actor = { id: "id123", role: Role.User };
 const context = {
-        resource: "invoice",
-        status: InvoiceStatus.Pending,
-        userId: "id123",
+  resource: "invoice",
+  status: InvoiceStatus.Pending,
 };
 
 const allowed = checkAccess(rules, actor, Operation.Pay, context);
@@ -63,9 +85,9 @@ console.log(allowed); // true
 Rules can be nested to express complex permission trees. `RuleEngine` traverses these `rules` arrays recursively.
 
 ```ts
-import { Rule, Role, Operation } from "./index";
+import { Rule } from "./index";
 
-export const nestedRules: readonly Rule[] = [
+export const nestedRules: readonly Rule<Role, Operation, Resource>[] = [
   {
     meta: { role: Role.Admin },
     rules: [

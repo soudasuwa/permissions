@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 
-import { checkAccess, Operation, RuleEngine } from "./index";
-import { rules } from "./rules.test";
+import { checkAccess, RuleEngine } from "./index";
+import { rules, Operation } from "./rules.test";
 
 const mock = {
 	invoice: {

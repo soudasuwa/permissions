@@ -1,6 +1,28 @@
-import { InvoiceStatus, Operation, Role, type Rule } from "./engine";
+export enum Role {
+	Module = "module",
+	Admin = "admin",
+	User = "user",
+}
 
-export const rules: readonly Rule[] = [
+export enum Operation {
+	Create = "create",
+	Edit = "edit",
+	View = "view",
+	Pay = "pay",
+}
+
+export enum InvoiceStatus {
+	Generating = "Generating",
+	Draft = "Draft",
+	Pending = "Pending",
+	Complete = "Complete",
+}
+
+export type Resource = "invoice";
+
+import type { Rule } from "./engine";
+
+export const rules: readonly Rule<Role, Operation, Resource>[] = [
 	{
 		meta: { resource: "invoice" },
 		rules: [
