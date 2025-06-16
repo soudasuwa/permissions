@@ -1,10 +1,10 @@
-import type {
-	Actor,
-	Condition,
-	InCondition,
-	NotCondition,
-	ReferenceCondition,
-} from "@/types";
+import type { Actor, Condition, ConditionObject } from "@/types";
+import {
+	isInCondition,
+	isNotCondition,
+	isReferenceCondition,
+	isConditionObject,
+} from "@/guards";
 
 /**
  * Compare a context value against the provided condition.
@@ -18,25 +18,26 @@ export const matchCondition = (
 	condition: Condition,
 	actor: Actor,
 ): boolean => {
-	if (condition && typeof condition === "object" && !Array.isArray(condition)) {
-		if ("not" in condition)
-			return !matchCondition(value, (condition as NotCondition).not, actor);
-		if ("in" in condition)
-			return (condition as InCondition).in.includes(
-				value as string | number | boolean,
-			);
-		if ("reference" in condition) {
-			return (
-				value === actor?.[(condition as ReferenceCondition).reference.actor]
-			);
-		}
-		return Object.entries(condition).every(([k, c]) =>
-			matchCondition(
-				(value as Record<string, unknown>)?.[k],
-				c as Condition,
-				actor,
-			),
-		);
-	}
+	if (isNotCondition(condition))
+		return !matchCondition(value, condition.not, actor);
+
+	if (isInCondition(condition))
+		return condition.in.includes(value as string | number | boolean);
+
+	if (isReferenceCondition(condition))
+		return value === actor?.[condition.reference.actor];
+
+	if (isConditionObject(condition))
+		return matchNestedConditions(value, condition, actor);
+
 	return value === condition;
 };
+
+const matchNestedConditions = (
+	value: unknown,
+	condition: ConditionObject,
+	actor: Actor,
+): boolean =>
+	Object.entries(condition).every(([k, c]) =>
+		matchCondition((value as Record<string, unknown>)?.[k], c, actor),
+	);

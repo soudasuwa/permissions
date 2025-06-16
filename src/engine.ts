@@ -14,15 +14,18 @@ export const matchesRule = <
 	matchMeta: MetaMatcher<M, A, Act, C>,
 ): boolean => {
 	if (!matchMeta(rule.meta, actor, action, context)) return false;
-	return (
-		!rule.match ||
-		Object.entries(rule.match).every(([field, cond]) =>
-			matchCondition(
-				(context as Record<string, unknown>)?.[field],
-				cond as Condition,
-				actor,
-			),
-		)
+
+	return matchContextConditions(rule.match, context, actor);
+};
+
+const matchContextConditions = (
+	match: Readonly<Record<string, Condition>> | undefined,
+	context: Context,
+	actor: Actor,
+): boolean => {
+	if (!match) return true;
+	return Object.entries(match).every(([field, cond]) =>
+		matchCondition((context as Record<string, unknown>)?.[field], cond, actor),
 	);
 };
 
@@ -41,11 +44,13 @@ export const checkAccess = <
 	action: Act,
 	context: C,
 	matchMeta: MetaMatcher<M, A, Act, C>,
-): boolean =>
-	rules.some(
-		(r) =>
-			matchesRule(r, actor, action, context, matchMeta) &&
-			(r.rules
-				? checkAccess(r.rules, actor, action, context, matchMeta)
-				: true),
-	);
+): boolean => {
+	for (const r of rules) {
+		if (!matchesRule(r, actor, action, context, matchMeta)) continue;
+
+		if (!r.rules || checkAccess(r.rules, actor, action, context, matchMeta))
+			return true;
+	}
+
+	return false;
+};
