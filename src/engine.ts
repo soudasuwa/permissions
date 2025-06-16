@@ -1,5 +1,3 @@
-export type StringLiteral = string;
-
 export interface Actor {
 	readonly [key: string]: unknown;
 }
