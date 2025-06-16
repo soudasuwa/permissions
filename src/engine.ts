@@ -15,7 +15,7 @@ export interface NotCondition {
 }
 
 export interface InCondition {
-	readonly in: readonly string[];
+	readonly in: readonly (string | number | boolean)[];
 }
 
 export type ConditionObject = {
@@ -55,7 +55,9 @@ export const matchCondition = (
 		if ("not" in condition)
 			return !matchCondition(value, (condition as NotCondition).not, actor);
 		if ("in" in condition)
-			return (condition as InCondition).in.includes(value as string);
+			return (condition as InCondition).in.includes(
+				value as string | number | boolean,
+			);
 		if ("reference" in condition) {
 			return (
 				value === actor?.[(condition as ReferenceCondition).reference.actor]
