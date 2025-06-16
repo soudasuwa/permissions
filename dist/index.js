@@ -1,1 +1,2 @@
-export { checkAccess, matchesRule, matchCondition, } from "./engine";
+export { matchCondition } from "./conditions";
+export { checkAccess, matchesRule } from "./engine";
