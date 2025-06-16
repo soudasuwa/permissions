@@ -1,6 +1,5 @@
 {
-	"private": true,
-	"name": "permissions",
+	"name": "@soudasuwa/permissions",
 	"version": "0.0.1",
 	"type": "module",
 	"main": "dist/index.js",
@@ -12,9 +11,9 @@
 		"build": "bun x tsc"
 	},
 	"keywords": [],
-	"author": "",
+	"author": "Alessandro Delass <alessandro@delass.ee>",
 	"license": "ISC",
-	"description": "",
+	"description": "A small access control engine",
 	"devDependencies": {
 		"@types/bun": "latest",
 		"@biomejs/biome": "1.9.4",

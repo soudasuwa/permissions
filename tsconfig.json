@@ -9,7 +9,7 @@
 		"forceConsistentCasingInFileNames": true,
 		"skipLibCheck": true,
 		"outDir": "dist",
-		"declaration": false
+		"declaration": true
 	},
 	"include": ["src/**/*.ts"],
 	"exclude": ["src/**/*.test.ts"]
