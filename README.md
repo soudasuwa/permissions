@@ -46,7 +46,7 @@ bun test
 Below is a minimal example of using `checkAccess` to see if a user can pay their invoice:
 
 ```ts
-import { checkAccess, type Rule } from "./index";
+import { checkAccess, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   Admin = "admin",
@@ -87,7 +87,7 @@ console.log(allowed); // true
 Use the `reference` helper to compare context values to properties on the actor.
 
 ```ts
-import { checkAccess, type Rule } from "./index";
+import { checkAccess, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   User = "user",
@@ -117,7 +117,7 @@ checkAccess(rules, actor, Operation.View, context); // true
 The engine understands both inclusion lists and negated matches.
 
 ```ts
-import { checkAccess, type Rule } from "./index";
+import { checkAccess, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   Admin = "admin",
@@ -156,7 +156,7 @@ checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: Invoice
 Rules can be nested to express complex permission trees. `RuleEngine` traverses these `rules` arrays recursively.
 
 ```ts
-import { Rule } from "./index";
+import { Rule } from "@soudasuwa/permissions";
 
 export const nestedRules: readonly Rule<Role, Operation, Resource>[] = [
   {
@@ -178,7 +178,7 @@ export const nestedRules: readonly Rule<Role, Operation, Resource>[] = [
 For repeated checks you can create a `RuleEngine` once and reuse it.
 
 ```ts
-import { RuleEngine, type Rule } from "./index";
+import { RuleEngine, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   Admin = "admin",
