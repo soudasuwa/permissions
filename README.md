@@ -98,7 +98,13 @@ enum Operation {
 
 type Resource = "invoice";
 
-const rules: readonly Rule<Role, Operation, Resource>[] = [
+interface Meta {
+  role?: Role;
+  operation?: Operation;
+  resource?: Resource;
+}
+
+const rules: readonly Rule<Meta>[] = [
   {
     meta: { role: Role.User, operation: Operation.View, resource: "invoice" },
     match: { userId: { reference: { actor: "id" } } },
@@ -134,7 +140,13 @@ enum InvoiceStatus {
 
 type Resource = "invoice";
 
-const rules: readonly Rule<Role, Operation, Resource>[] = [
+interface Meta {
+  role?: Role;
+  operation?: Operation;
+  resource?: Resource;
+}
+
+const rules: readonly Rule<Meta>[] = [
   {
     meta: { role: Role.Admin, operation: Operation.Edit, resource: "invoice" },
     match: { status: { in: [InvoiceStatus.Draft, InvoiceStatus.Pending] } },
@@ -157,7 +169,13 @@ Rules can be nested to express complex permission trees. `checkAccess` traverses
 ```ts
 import { Rule } from "@soudasuwa/permissions";
 
-export const nestedRules: readonly Rule<Role, Operation, Resource>[] = [
+interface Meta {
+  role?: Role;
+  operation?: Operation;
+  resource?: Resource;
+}
+
+export const nestedRules: readonly Rule<Meta>[] = [
   {
     meta: { role: Role.Admin },
     rules: [
