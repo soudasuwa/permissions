@@ -1,11 +1,8 @@
 export type StringLiteral = string;
-export interface Actor<R extends StringLiteral = StringLiteral> {
-    readonly role: R;
-    readonly id: string;
+export interface Actor {
     readonly [key: string]: unknown;
 }
-export interface Context<Res extends StringLiteral = StringLiteral> {
-    readonly resource: Res;
+export interface Context {
     readonly [key: string]: unknown;
 }
 export interface ReferenceCondition {
@@ -23,15 +20,10 @@ export type ConditionObject = {
     readonly [key: string]: Condition;
 };
 export type Condition = string | number | boolean | NotCondition | InCondition | ReferenceCondition | ConditionObject;
-export interface RuleMeta<R extends StringLiteral = StringLiteral, O extends StringLiteral = StringLiteral, Res extends StringLiteral = StringLiteral> {
-    readonly role?: R | readonly R[];
-    readonly resource?: Res;
-    readonly operation?: O;
-}
-export interface Rule<R extends StringLiteral = StringLiteral, O extends StringLiteral = StringLiteral, Res extends StringLiteral = StringLiteral> {
-    readonly meta?: RuleMeta<R, O, Res>;
+export interface Rule<M extends Record<string, unknown> = Record<string, unknown>> {
+    readonly meta?: M;
     readonly match?: Readonly<Record<string, Condition>>;
-    readonly rules?: readonly Rule<R, O, Res>[];
+    readonly rules?: readonly Rule<M>[];
 }
 /**
  * Compare a context value against the provided condition.
@@ -40,27 +32,22 @@ export interface Rule<R extends StringLiteral = StringLiteral, O extends StringL
  * supports negation, inclusion lists and references to
  * the actor performing the check.
  */
-export declare const matchCondition: <R extends StringLiteral>(value: unknown, condition: Condition, actor: Actor<R>) => boolean;
-/**
- * Determine whether a rule's meta information matches the
- * provided actor, action and context. Role arrays are
- * supported for cases where multiple roles share a rule.
- */
-export declare const matchesMeta: <R extends StringLiteral = StringLiteral, O extends StringLiteral = StringLiteral, Res extends StringLiteral = StringLiteral>(meta: RuleMeta<R, O, Res> | undefined, actor: Actor<R>, action: O, context: Context<Res>) => boolean;
+export declare const matchCondition: (value: unknown, condition: Condition, actor: Actor) => boolean;
 /**
  * Validate that a rule applies to the given actor and context.
  *
  * Both the meta information and the optional match block must
  * succeed in order for the rule to match.
  */
-export declare const matchesRule: <R extends StringLiteral = StringLiteral, O extends StringLiteral = StringLiteral, Res extends StringLiteral = StringLiteral>(rule: Rule<R, O, Res>, actor: Actor<R>, action: O, context: Context<Res>) => boolean;
+export type MetaMatcher<M extends Record<string, unknown> = Record<string, unknown>, A extends Actor = Actor, Act = string, C extends Context = Context> = (meta: M | undefined, actor: A, action: Act, context: C) => boolean;
+export declare const matchesRule: <M extends Record<string, unknown> = Record<string, unknown>, A extends Actor = Actor, Act = string, C extends Context = Context>(rule: Rule<M>, actor: A, action: Act, context: C, matchMeta: MetaMatcher<M, A, Act, C>) => boolean;
 /**
  * Recursively evaluate a rules array, returning true as soon as a matching
  * rule chain is found.
  */
-export declare const evaluateRules: <R extends StringLiteral = StringLiteral, O extends StringLiteral = StringLiteral, Res extends StringLiteral = StringLiteral>(rules: readonly Rule<R, O, Res>[], actor: Actor<R>, action: O, context: Context<Res>) => boolean;
+export declare const evaluateRules: <M extends Record<string, unknown> = Record<string, unknown>, A extends Actor = Actor, Act = string, C extends Context = Context>(rules: readonly Rule<M>[], actor: A, action: Act, context: C, matchMeta: MetaMatcher<M, A, Act, C>) => boolean;
 /**
  * Convenience function for one-off access checks. It evaluates the rule set
  * directly without the need for a `RuleEngine` instance.
  */
-export declare const checkAccess: <R extends StringLiteral = StringLiteral, O extends StringLiteral = StringLiteral, Res extends StringLiteral = StringLiteral>(rules: readonly Rule<R, O, Res>[], actor: Actor<R>, action: O, context: Context<Res>) => boolean;
+export declare const checkAccess: <M extends Record<string, unknown> = Record<string, unknown>, A extends Actor = Actor, Act = string, C extends Context = Context>(rules: readonly Rule<M>[], actor: A, action: Act, context: C, matchMeta: MetaMatcher<M, A, Act, C>) => boolean;

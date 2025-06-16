@@ -46,7 +46,25 @@ enum InvoiceStatus {
 
 type Resource = "invoice";
 
-const rules: readonly Rule<Role, Operation, Resource>[] = [
+interface Meta {
+  role?: Role | readonly Role[];
+  operation?: Operation;
+  resource?: Resource;
+}
+
+const matcher: MetaMatcher<Meta> = (meta, actor, action, ctx) => {
+  if (!meta) return true;
+  const { role, operation, resource } = meta;
+  if (role) {
+    const roles = Array.isArray(role) ? role : [role];
+    if (!roles.includes((actor as { role?: Role }).role ?? Role.User)) return false;
+  }
+  if (resource && resource !== (ctx as { resource?: Resource }).resource) return false;
+  if (operation && operation !== action) return false;
+  return true;
+};
+
+const rules: readonly Rule<Meta>[] = [
   {
     meta: { role: Role.User, operation: Operation.Pay, resource: "invoice" },
     match: { status: InvoiceStatus.Pending },
@@ -59,7 +77,7 @@ const context = {
   status: InvoiceStatus.Pending,
 };
 
-const allowed = checkAccess(rules, actor, Operation.Pay, context);
+const allowed = checkAccess(rules, actor, Operation.Pay, context, matcher);
 console.log(allowed); // true
 ```
 
@@ -90,7 +108,7 @@ const rules: readonly Rule<Role, Operation, Resource>[] = [
 const actor = { id: "abc", role: Role.User };
 const context = { resource: "invoice", userId: "abc" };
 
-checkAccess(rules, actor, Operation.View, context); // true
+checkAccess(rules, actor, Operation.View, context, matcher); // true
 ```
 
 ### 3. `in` and `not` conditions
@@ -128,8 +146,8 @@ const rules: readonly Rule<Role, Operation, Resource>[] = [
 ];
 
 const actor = { id: "1", role: Role.Admin };
-checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Draft }); // true
-checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Complete }); // false
+checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Draft }, matcher); // true
+checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Complete }, matcher); // false
 ```
 
 ### 4. Nested rules
@@ -171,12 +189,12 @@ enum Operation {
 
 type Resource = "invoice";
 
-const rules: readonly Rule<Role, Operation, Resource>[] = [
+const rules: readonly Rule<Meta>[] = [
   { meta: { role: Role.Admin, operation: Operation.View, resource: "invoice" } },
 ];
 
 const actor = { id: "42", role: Role.Admin };
 const ctx = { resource: "invoice" };
 
-checkAccess(rules, actor, Operation.View, ctx); // true
+checkAccess(rules, actor, Operation.View, ctx, matcher); // true
 ```
