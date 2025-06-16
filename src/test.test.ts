@@ -10,6 +10,7 @@ import {
 	type Rule,
 } from "./engine";
 
+// Shared enums for the invoice scenarios
 enum Role {
 	Admin = "admin",
 	Module = "module",
@@ -64,7 +65,9 @@ const complexRules: readonly Rule<Role, Operation, Resource>[] = [
 	},
 ];
 
-describe("matchCondition", () => {
+// ---------------- Basic unit tests ----------------
+
+describe("matchCondition basic", () => {
 	it("handles primitives", () => {
 		expect(matchCondition("a", "a", dummyActor)).toBe(true);
 	});
@@ -88,6 +91,24 @@ describe("matchCondition", () => {
 	it("handles nested objects", () => {
 		const value = { foo: { bar: "baz" } };
 		const cond = { foo: { bar: { not: "qux" } } };
+		expect(matchCondition(value, cond, dummyActor)).toBe(true);
+	});
+
+	it("handles numbers", () => {
+		expect(matchCondition(5, 5, dummyActor)).toBe(true);
+	});
+
+	it("handles booleans", () => {
+		expect(matchCondition(true, true, dummyActor)).toBe(true);
+	});
+
+	it("supports numbers in 'in' lists", () => {
+		expect(matchCondition(2, { in: [1, 2, 3] }, dummyActor)).toBe(true);
+	});
+
+	it("handles mixed nested conditions", () => {
+		const value = { foo: 10, bar: false };
+		const cond = { foo: { not: 0 }, bar: { in: [false] } };
 		expect(matchCondition(value, cond, dummyActor)).toBe(true);
 	});
 });
@@ -145,9 +166,44 @@ describe("matchesRule", () => {
 			}),
 		).toBe(false);
 	});
+
+	it("returns false when meta fails", () => {
+		expect(matchesRule(rule, actor, Operation.Edit, ctx)).toBe(false);
+	});
 });
 
-describe("RuleEngine integration", () => {
+describe("checkAccess simple", () => {
+	const rules: readonly Rule<Role, Operation, Resource>[] = [
+		{
+			meta: {
+				role: Role.Admin,
+				operation: Operation.View,
+				resource: "invoice",
+			},
+		},
+	];
+	const actor = { id: "1", role: Role.Admin } as const;
+	const ctx = { resource: "invoice" } as const;
+
+	it("allows matching meta", () => {
+		expect(checkAccess(rules, actor, Operation.View, ctx)).toBe(true);
+	});
+
+	it("rejects mismatched meta", () => {
+		expect(checkAccess(rules, actor, Operation.Edit, ctx)).toBe(false);
+	});
+
+	it("matches RuleEngine results", () => {
+		const engine = new RuleEngine(rules);
+		expect(engine.checkAccess(actor, Operation.View, ctx)).toBe(
+			checkAccess(rules, actor, Operation.View, ctx),
+		);
+	});
+});
+
+// ---------------- Integration tests ----------------
+
+describe("invoice rules scenario", () => {
 	const admin: Actor<Role> = { id: "a", role: Role.Admin };
 	const moduleActor: Actor<Role> = { id: "m", role: Role.Module };
 	const user: Actor<Role> = { id: "u1", role: Role.User };
@@ -204,41 +260,9 @@ describe("RuleEngine integration", () => {
 			false,
 		);
 	});
-
-	it("RuleEngine instance matches checkAccess", () => {
-		const engine = new RuleEngine(complexRules);
-		const ctx = {
-			resource: "invoice",
-			status: Status.Pending,
-			userId: "u1",
-		} as const;
-		expect(engine.checkAccess(user, Operation.View, ctx)).toBe(
-			checkAccess(complexRules, user, Operation.View, ctx),
-		);
-	});
 });
 
-describe("matchCondition additional primitives", () => {
-	it("handles numbers", () => {
-		expect(matchCondition(5, 5, dummyActor)).toBe(true);
-	});
-
-	it("handles booleans", () => {
-		expect(matchCondition(true, true, dummyActor)).toBe(true);
-	});
-
-	it("supports numbers in 'in' lists", () => {
-		expect(matchCondition(2, { in: [1, 2, 3] }, dummyActor)).toBe(true);
-	});
-
-	it("handles mixed nested conditions", () => {
-		const value = { foo: 10, bar: false };
-		const cond = { foo: { not: 0 }, bar: { in: [false] } };
-		expect(matchCondition(value, cond, dummyActor)).toBe(true);
-	});
-});
-
-describe("RuleEngine advanced scenarios", () => {
+describe("advanced nested rules", () => {
 	const advancedRules: readonly Rule<Role, Operation, Resource>[] = [
 		{
 			meta: { role: Role.Admin },
@@ -277,6 +301,174 @@ describe("RuleEngine advanced scenarios", () => {
 		const user: Actor<Role> = { id: "2", role: Role.User };
 		const ctx = { resource: "invoice" } as const;
 		expect(engine.checkAccess(user, Operation.View, ctx)).toBe(false);
+	});
+});
+
+describe("file system permissions", () => {
+	enum FSRole {
+		Owner = "owner",
+		Editor = "editor",
+		Viewer = "viewer",
+	}
+	enum FSOp {
+		Read = "read",
+		Write = "write",
+		Delete = "delete",
+	}
+	enum Visibility {
+		Public = "public",
+		Private = "private",
+	}
+	type FSResource = "file";
+
+	const fsRules: readonly Rule<FSRole, FSOp, FSResource>[] = [
+		{ meta: { role: FSRole.Owner, resource: "file" } },
+		{ meta: { role: FSRole.Editor, operation: FSOp.Read, resource: "file" } },
+		{
+			meta: { role: FSRole.Editor, operation: FSOp.Write, resource: "file" },
+			match: { ownerId: { reference: { actor: "id" } } },
+		},
+		{
+			meta: { role: FSRole.Viewer, operation: FSOp.Read, resource: "file" },
+			match: { visibility: Visibility.Public },
+		},
+		{
+			meta: { role: FSRole.Viewer, operation: FSOp.Read, resource: "file" },
+			match: { ownerId: { reference: { actor: "id" } } },
+		},
+	];
+
+	const owner: Actor<FSRole> = { id: "o1", role: FSRole.Owner };
+	const editor: Actor<FSRole> = { id: "e1", role: FSRole.Editor };
+	const viewer: Actor<FSRole> = { id: "v1", role: FSRole.Viewer };
+
+	it("owner can delete private file", () => {
+		const ctx = {
+			resource: "file",
+			visibility: Visibility.Private,
+			ownerId: "o1",
+		} as const;
+		expect(checkAccess(fsRules, owner, FSOp.Delete, ctx)).toBe(true);
+	});
+
+	it("editor can write own file", () => {
+		const ctx = {
+			resource: "file",
+			visibility: Visibility.Private,
+			ownerId: "e1",
+		} as const;
+		expect(checkAccess(fsRules, editor, FSOp.Write, ctx)).toBe(true);
+	});
+
+	it("editor cannot write other's file", () => {
+		const ctx = {
+			resource: "file",
+			visibility: Visibility.Private,
+			ownerId: "o1",
+		} as const;
+		expect(checkAccess(fsRules, editor, FSOp.Write, ctx)).toBe(false);
+	});
+
+	it("viewer can read public file", () => {
+		const ctx = {
+			resource: "file",
+			visibility: Visibility.Public,
+			ownerId: "o1",
+		} as const;
+		expect(checkAccess(fsRules, viewer, FSOp.Read, ctx)).toBe(true);
+	});
+
+	it("viewer cannot read private file of others", () => {
+		const ctx = {
+			resource: "file",
+			visibility: Visibility.Private,
+			ownerId: "o1",
+		} as const;
+		expect(checkAccess(fsRules, viewer, FSOp.Read, ctx)).toBe(false);
+	});
+});
+
+describe("payment permissions", () => {
+	enum PayRole {
+		Customer = "customer",
+		Merchant = "merchant",
+		Processor = "processor",
+	}
+	enum PayOp {
+		Pay = "pay",
+		Refund = "refund",
+		Cancel = "cancel",
+	}
+	enum PayStatus {
+		Pending = "Pending",
+		Completed = "Completed",
+	}
+	type PayRes = "payment";
+
+	const payRules: readonly Rule<PayRole, PayOp, PayRes>[] = [
+		{
+			meta: {
+				role: PayRole.Customer,
+				operation: PayOp.Pay,
+				resource: "payment",
+			},
+			match: {
+				status: PayStatus.Pending,
+				userId: { reference: { actor: "id" } },
+			},
+		},
+		{
+			meta: {
+				role: PayRole.Merchant,
+				operation: PayOp.Refund,
+				resource: "payment",
+			},
+			match: { status: PayStatus.Completed },
+		},
+		{
+			meta: {
+				role: PayRole.Processor,
+				operation: PayOp.Cancel,
+				resource: "payment",
+			},
+		},
+	];
+
+	const customer: Actor<PayRole> = { id: "c1", role: PayRole.Customer };
+	const merchant: Actor<PayRole> = { id: "m1", role: PayRole.Merchant };
+	const processor: Actor<PayRole> = { id: "p1", role: PayRole.Processor };
+
+	it("customer can pay own pending payment", () => {
+		const ctx = {
+			resource: "payment",
+			status: PayStatus.Pending,
+			userId: "c1",
+		} as const;
+		expect(checkAccess(payRules, customer, PayOp.Pay, ctx)).toBe(true);
+	});
+
+	it("customer cannot pay completed payment", () => {
+		const ctx = {
+			resource: "payment",
+			status: PayStatus.Completed,
+			userId: "c1",
+		} as const;
+		expect(checkAccess(payRules, customer, PayOp.Pay, ctx)).toBe(false);
+	});
+
+	it("merchant can refund completed payment", () => {
+		const ctx = { resource: "payment", status: PayStatus.Completed } as const;
+		expect(checkAccess(payRules, merchant, PayOp.Refund, ctx)).toBe(true);
+	});
+
+	it("merchant cannot refund pending payment", () => {
+		const ctx = { resource: "payment", status: PayStatus.Pending } as const;
+		expect(checkAccess(payRules, merchant, PayOp.Refund, ctx)).toBe(false);
+	});
+
+	it("processor can cancel any payment", () => {
+		const ctx = { resource: "payment", status: PayStatus.Pending } as const;
+		expect(checkAccess(payRules, processor, PayOp.Cancel, ctx)).toBe(true);
 	});
 });
 
