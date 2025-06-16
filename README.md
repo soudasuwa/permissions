@@ -20,6 +20,7 @@ This repository provides a small rules engine for controlling access to invoice 
 - **view** – allowed when `status` is `Pending` or `Complete` and the invoice `userId` matches the actor.
 - **pay** – allowed for invoices in `Pending` that belong to the user.
 
+The engine checks the parent rule first and then evaluates each nested rule in turn.
 ## Development
 
 Format and lint the code using [Biome](https://biomejs.dev):
@@ -55,3 +56,24 @@ const allowed = checkAccess(rules, actor, Operation.Pay, context);
 console.log(allowed); // true
 ```
 
+## Nested rules
+
+Rules can be nested to express complex permission trees. `RuleEngine` traverses these `rules` arrays recursively.
+
+```ts
+import { Rule, Role, Operation } from "./index";
+
+export const nestedRules: readonly Rule[] = [
+  {
+    meta: { role: Role.Admin },
+    rules: [
+      {
+        meta: { resource: "invoice" },
+        rules: [
+          { meta: { operation: Operation.View } },
+        ],
+      },
+    ],
+  },
+];
+```
