@@ -20,7 +20,7 @@ export enum InvoiceStatus {
 
 export type Resource = "invoice";
 
-import type { Rule } from "./engine";
+import type { Rule } from "../../src/engine";
 
 export const rules: readonly Rule<Role, Operation, Resource>[] = [
 	{

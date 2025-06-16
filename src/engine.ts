@@ -56,6 +56,13 @@ export interface Rule<
 	readonly rules?: readonly Rule<R, O, Res>[];
 }
 
+/**
+ * Compare a context value against the provided condition.
+ *
+ * The function recursively evaluates nested objects and
+ * supports negation, inclusion lists and references to
+ * the actor performing the check.
+ */
 export const matchCondition = <R extends StringLiteral>(
 	value: unknown,
 	condition: Condition,
@@ -82,6 +89,11 @@ export const matchCondition = <R extends StringLiteral>(
 	return value === condition;
 };
 
+/**
+ * Determine whether a rule's meta information matches the
+ * provided actor, action and context. Role arrays are
+ * supported for cases where multiple roles share a rule.
+ */
 export const matchesMeta = <
 	R extends StringLiteral = StringLiteral,
 	O extends StringLiteral = StringLiteral,
@@ -104,6 +116,12 @@ export const matchesMeta = <
 	return true;
 };
 
+/**
+ * Validate that a rule applies to the given actor and context.
+ *
+ * Both the meta information and the optional match block must
+ * succeed in order for the rule to match.
+ */
 export const matchesRule = <
 	R extends StringLiteral = StringLiteral,
 	O extends StringLiteral = StringLiteral,
@@ -125,7 +143,8 @@ export const matchesRule = <
 
 /**
  * Evaluates rules in an object-oriented manner to keep logic
- * encapsulated and reusable.
+ * encapsulated and reusable. A single RuleEngine instance can
+ * be reused for repeated checks without re-parsing the rule set.
  */
 export class RuleEngine<
 	R extends StringLiteral = StringLiteral,
@@ -141,6 +160,10 @@ export class RuleEngine<
 		return this.evaluateRules(this.rules, actor, action, context);
 	}
 
+	/**
+	 * Evaluate a rules array recursively, returning true as soon
+	 * as a matching rule chain is found.
+	 */
 	private evaluateRules(
 		rules: readonly Rule<R, O, Res>[],
 		actor: Actor<R>,
@@ -155,6 +178,10 @@ export class RuleEngine<
 	}
 }
 
+/**
+ * Convenience function for one-off access checks. It creates a
+ * temporary RuleEngine instance under the hood.
+ */
 export const checkAccess = <
 	R extends StringLiteral = StringLiteral,
 	O extends StringLiteral = StringLiteral,
