@@ -1,5 +1,4 @@
 export {
-	RuleEngine,
 	checkAccess,
 	type Actor,
 	type Context,

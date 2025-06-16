@@ -55,25 +55,12 @@ export declare const matchesMeta: <R extends StringLiteral = StringLiteral, O ex
  */
 export declare const matchesRule: <R extends StringLiteral = StringLiteral, O extends StringLiteral = StringLiteral, Res extends StringLiteral = StringLiteral>(rule: Rule<R, O, Res>, actor: Actor<R>, action: O, context: Context<Res>) => boolean;
 /**
- * Evaluates rules in an object-oriented manner to keep logic
- * encapsulated and reusable. A single RuleEngine instance can
- * be reused for repeated checks without re-parsing the rule set.
+ * Recursively evaluate a rules array, returning true as soon as a matching
+ * rule chain is found.
  */
-export declare class RuleEngine<R extends StringLiteral = StringLiteral, O extends StringLiteral = StringLiteral, Res extends StringLiteral = StringLiteral> {
-    private readonly rules;
-    constructor(rules: readonly Rule<R, O, Res>[]);
-    /**
-     * Determine if the given actor can perform an action on the context.
-     */
-    checkAccess(actor: Actor<R>, action: O, context: Context<Res>): boolean;
-    /**
-     * Evaluate a rules array recursively, returning true as soon
-     * as a matching rule chain is found.
-     */
-    private evaluateRules;
-}
+export declare const evaluateRules: <R extends StringLiteral = StringLiteral, O extends StringLiteral = StringLiteral, Res extends StringLiteral = StringLiteral>(rules: readonly Rule<R, O, Res>[], actor: Actor<R>, action: O, context: Context<Res>) => boolean;
 /**
- * Convenience function for one-off access checks. It creates a
- * temporary RuleEngine instance under the hood.
+ * Convenience function for one-off access checks. It evaluates the rule set
+ * directly without the need for a `RuleEngine` instance.
  */
 export declare const checkAccess: <R extends StringLiteral = StringLiteral, O extends StringLiteral = StringLiteral, Res extends StringLiteral = StringLiteral>(rules: readonly Rule<R, O, Res>[], actor: Actor<R>, action: O, context: Context<Res>) => boolean;

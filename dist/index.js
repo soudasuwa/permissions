@@ -1,1 +1,1 @@
-export { RuleEngine, checkAccess, matchCondition, } from "./engine";
+export { checkAccess, matchCondition, } from "./engine";
