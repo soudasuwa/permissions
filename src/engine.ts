@@ -1,33 +1,13 @@
-export enum Role {
-	Module = "module",
-	Admin = "admin",
-	User = "user",
-}
+export type StringLiteral = string;
 
-export enum Operation {
-	Create = "create",
-	Edit = "edit",
-	View = "view",
-	Pay = "pay",
-}
-
-export enum InvoiceStatus {
-	Generating = "Generating",
-	Draft = "Draft",
-	Pending = "Pending",
-	Complete = "Complete",
-}
-
-export type Resource = "invoice";
-
-export interface Actor {
-	readonly role: Role;
+export interface Actor<R extends StringLiteral = StringLiteral> {
+	readonly role: R;
 	readonly id: string;
 	readonly [key: string]: unknown;
 }
 
-export interface Context {
-	readonly resource: Resource;
+export interface Context<Res extends StringLiteral = StringLiteral> {
+	readonly resource: Res;
 	readonly [key: string]: unknown;
 }
 
@@ -56,22 +36,30 @@ export type Condition =
 	| ReferenceCondition
 	| ConditionObject;
 
-export interface RuleMeta {
-	readonly role?: Role | readonly Role[];
-	readonly resource?: Resource;
-	readonly operation?: Operation;
+export interface RuleMeta<
+	R extends StringLiteral = StringLiteral,
+	O extends StringLiteral = StringLiteral,
+	Res extends StringLiteral = StringLiteral,
+> {
+	readonly role?: R | readonly R[];
+	readonly resource?: Res;
+	readonly operation?: O;
 }
 
-export interface Rule {
-	readonly meta?: RuleMeta;
+export interface Rule<
+	R extends StringLiteral = StringLiteral,
+	O extends StringLiteral = StringLiteral,
+	Res extends StringLiteral = StringLiteral,
+> {
+	readonly meta?: RuleMeta<R, O, Res>;
 	readonly match?: Readonly<Record<string, Condition>>;
-	readonly rules?: readonly Rule[];
+	readonly rules?: readonly Rule<R, O, Res>[];
 }
 
-export const matchCondition = (
+export const matchCondition = <R extends StringLiteral>(
 	value: unknown,
 	condition: Condition,
-	actor: Actor,
+	actor: Actor<R>,
 ): boolean => {
 	if (condition && typeof condition === "object" && !Array.isArray(condition)) {
 		if ("not" in condition)
@@ -94,11 +82,15 @@ export const matchCondition = (
 	return value === condition;
 };
 
-export const matchesMeta = (
-	meta: RuleMeta | undefined,
-	actor: Actor,
-	action: Operation,
-	context: Context,
+export const matchesMeta = <
+	R extends StringLiteral = StringLiteral,
+	O extends StringLiteral = StringLiteral,
+	Res extends StringLiteral = StringLiteral,
+>(
+	meta: RuleMeta<R, O, Res> | undefined,
+	actor: Actor<R>,
+	action: O,
+	context: Context<Res>,
 ): boolean => {
 	if (!meta) return true;
 	const { role, resource, operation } = meta;
@@ -112,11 +104,15 @@ export const matchesMeta = (
 	return true;
 };
 
-export const matchesRule = (
-	rule: Rule,
-	actor: Actor,
-	action: Operation,
-	context: Context,
+export const matchesRule = <
+	R extends StringLiteral = StringLiteral,
+	O extends StringLiteral = StringLiteral,
+	Res extends StringLiteral = StringLiteral,
+>(
+	rule: Rule<R, O, Res>,
+	actor: Actor<R>,
+	action: O,
+	context: Context<Res>,
 ): boolean => {
 	if (!matchesMeta(rule.meta, actor, action, context)) return false;
 	return (
@@ -131,21 +127,25 @@ export const matchesRule = (
  * Evaluates rules in an object-oriented manner to keep logic
  * encapsulated and reusable.
  */
-export class RuleEngine {
-	constructor(private readonly rules: readonly Rule[]) {}
+export class RuleEngine<
+	R extends StringLiteral = StringLiteral,
+	O extends StringLiteral = StringLiteral,
+	Res extends StringLiteral = StringLiteral,
+> {
+	constructor(private readonly rules: readonly Rule<R, O, Res>[]) {}
 
 	/**
 	 * Determine if the given actor can perform an action on the context.
 	 */
-	checkAccess(actor: Actor, action: Operation, context: Context): boolean {
+	checkAccess(actor: Actor<R>, action: O, context: Context<Res>): boolean {
 		return this.evaluateRules(this.rules, actor, action, context);
 	}
 
 	private evaluateRules(
-		rules: readonly Rule[],
-		actor: Actor,
-		action: Operation,
-		context: Context,
+		rules: readonly Rule<R, O, Res>[],
+		actor: Actor<R>,
+		action: O,
+		context: Context<Res>,
 	): boolean {
 		return rules.some(
 			(r) =>
@@ -155,9 +155,14 @@ export class RuleEngine {
 	}
 }
 
-export const checkAccess = (
-	rules: readonly Rule[],
-	actor: Actor,
-	action: Operation,
-	context: Context,
-): boolean => new RuleEngine(rules).checkAccess(actor, action, context);
+export const checkAccess = <
+	R extends StringLiteral = StringLiteral,
+	O extends StringLiteral = StringLiteral,
+	Res extends StringLiteral = StringLiteral,
+>(
+	rules: readonly Rule<R, O, Res>[],
+	actor: Actor<R>,
+	action: O,
+	context: Context<Res>,
+): boolean =>
+	new RuleEngine<R, O, Res>(rules).checkAccess(actor, action, context);
