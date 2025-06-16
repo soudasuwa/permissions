@@ -116,7 +116,7 @@ export const matchesRule = <
  * Recursively evaluate a rules array, returning true as soon as a matching
  * rule chain is found.
  */
-export const evaluateRules = <
+export const checkAccess = <
 	M extends Record<string, unknown> = Record<string, unknown>,
 	A extends Actor = Actor,
 	Act = string,
@@ -132,23 +132,6 @@ export const evaluateRules = <
 		(r) =>
 			matchesRule(r, actor, action, context, matchMeta) &&
 			(r.rules
-				? evaluateRules(r.rules, actor, action, context, matchMeta)
+				? checkAccess(r.rules, actor, action, context, matchMeta)
 				: true),
 	);
-
-/**
- * Convenience function for one-off access checks. It evaluates the rule set
- * directly without the need for a `RuleEngine` instance.
- */
-export const checkAccess = <
-	M extends Record<string, unknown> = Record<string, unknown>,
-	A extends Actor = Actor,
-	Act = string,
-	C extends Context = Context,
->(
-	rules: readonly Rule<M>[],
-	actor: A,
-	action: Act,
-	context: C,
-	matchMeta: MetaMatcher<M, A, Act, C>,
-): boolean => evaluateRules(rules, actor, action, context, matchMeta);

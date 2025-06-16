@@ -28,12 +28,7 @@ export const matchesRule = (rule, actor, action, context, matchMeta) => {
  * Recursively evaluate a rules array, returning true as soon as a matching
  * rule chain is found.
  */
-export const evaluateRules = (rules, actor, action, context, matchMeta) => rules.some((r) => matchesRule(r, actor, action, context, matchMeta) &&
+export const checkAccess = (rules, actor, action, context, matchMeta) => rules.some((r) => matchesRule(r, actor, action, context, matchMeta) &&
     (r.rules
-        ? evaluateRules(r.rules, actor, action, context, matchMeta)
+        ? checkAccess(r.rules, actor, action, context, matchMeta)
         : true));
-/**
- * Convenience function for one-off access checks. It evaluates the rule set
- * directly without the need for a `RuleEngine` instance.
- */
-export const checkAccess = (rules, actor, action, context, matchMeta) => evaluateRules(rules, actor, action, context, matchMeta);
