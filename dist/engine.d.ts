@@ -14,7 +14,7 @@ export interface NotCondition {
     readonly not: Condition;
 }
 export interface InCondition {
-    readonly in: readonly string[];
+    readonly in: readonly (string | number | boolean)[];
 }
 export type ConditionObject = {
     readonly [key: string]: Condition;
