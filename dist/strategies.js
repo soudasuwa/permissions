@@ -7,70 +7,69 @@ const hasRole = (actor, role) => {
     return roles.includes(actor.role ?? "");
 };
 /**
- * Create a matcher that understands RoleMeta. Operations, resources and
- * attributes are optional depending on the strategy used.
+ * Meta matcher utilities implementing progressively more advanced
+ * strategies. Each matcher builds on the previous one in line with the
+ * open-closed principle.
  */
-const createMatcher = (options) => {
-    return (meta, actor, action, context) => {
-        if (!meta)
-            return true;
-        if (hasRole(actor, meta.role) === false)
-            return false;
-        if (options.operation &&
-            "operation" in meta &&
-            meta.operation !== undefined &&
-            meta.operation !== action) {
-            return false;
-        }
-        if (options.resource &&
-            "resource" in meta &&
-            meta.resource !== undefined &&
-            meta.resource !== context.resource) {
-            return false;
-        }
-        if (options.attribute && meta.attribute) {
-            const { key, value, reference } = meta.attribute;
-            const ctxVal = context[key];
-            if (reference !== undefined) {
-                if (ctxVal !== actor[reference])
-                    return false;
-            }
-            else if (value !== undefined) {
-                if (ctxVal !== value)
-                    return false;
-            }
-        }
+/** Matcher for role based meta information. */
+function matchRole(meta, actor, _action, _context) {
+    if (!meta)
         return true;
-    };
-};
+    const roles = Array.isArray(meta.role) ? meta.role : [meta.role ?? ""];
+    return roles.includes(actor.role ?? "");
+}
+/** Matcher for role & operation meta. */
+function matchRoleOperation(meta, actor, action, context) {
+    if (matchRole(meta, actor, action, context) === false)
+        return false;
+    return meta?.operation === undefined || meta.operation === action;
+}
+/** Matcher for resource, role & operation meta. */
+function matchResourceRoleOperation(meta, actor, action, context) {
+    if (matchRoleOperation(meta, actor, action, context) === false)
+        return false;
+    const resource = context.resource;
+    return meta?.resource === undefined || meta.resource === resource;
+}
+/** Matcher for resource, role, operation & attribute meta. */
+function matchResourceRoleOperationAttribute(meta, actor, action, context) {
+    if (matchResourceRoleOperation(meta, actor, action, context) === false) {
+        return false;
+    }
+    const attribute = meta?.attribute;
+    if (!attribute)
+        return true;
+    const value = context[attribute.key];
+    if (attribute.reference !== undefined) {
+        return (value ===
+            actor[attribute.reference]);
+    }
+    if (attribute.value !== undefined) {
+        return value === attribute.value;
+    }
+    return true;
+}
 /** Role based engine implementation. */
 export class RoleEngine extends RuleEngine {
     constructor() {
-        super(createMatcher({}));
+        super(matchRole);
     }
 }
 /** Role & operation based engine. */
 export class RoleOperationEngine extends RuleEngine {
     constructor() {
-        super(createMatcher({ operation: true }));
+        super(matchRoleOperation);
     }
 }
 /** Resource, role & operation engine. */
 export class ResourceRoleOperationEngine extends RuleEngine {
     constructor() {
-        super(createMatcher({
-            operation: true,
-            resource: true,
-        }));
+        super(matchResourceRoleOperation);
     }
 }
 /** Resource, role, operation & attribute engine. */
 export class ResourceRoleOperationAttributeEngine extends RuleEngine {
     constructor() {
-        super(createMatcher({
-            operation: true,
-            resource: true,
-            attribute: true,
-        }));
+        super(matchResourceRoleOperationAttribute);
     }
 }

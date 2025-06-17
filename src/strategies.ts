@@ -3,17 +3,17 @@ import { RuleEngine } from "@/engine";
 
 /** Meta information for role based strategies. */
 export interface RoleMeta extends Record<string, unknown> {
-        readonly role?: string | readonly string[];
+	readonly role?: string | readonly string[];
 }
 
 /** Meta information for role and operation strategies. */
 export interface RoleOperationMeta extends RoleMeta {
-        readonly operation?: string;
+	readonly operation?: string;
 }
 
 /** Meta information for resource, role and operation strategies. */
 export interface ResourceRoleOperationMeta extends RoleOperationMeta {
-        readonly resource?: string;
+	readonly resource?: string;
 }
 
 /**
@@ -28,8 +28,8 @@ export interface AttributeMatcher<A extends Actor = Actor> {
 }
 
 export interface ResourceRoleOperationAttributeMeta<A extends Actor = Actor>
-        extends ResourceRoleOperationMeta {
-        readonly attribute?: AttributeMatcher<A>;
+	extends ResourceRoleOperationMeta {
+	readonly attribute?: AttributeMatcher<A>;
 }
 
 /** Utility to check if an actor possesses a role. */
@@ -40,53 +40,81 @@ const hasRole = (actor: Actor, role?: string | readonly string[]): boolean => {
 };
 
 /**
- * Create a matcher that understands RoleMeta. Operations, resources and
- * attributes are optional depending on the strategy used.
+ * Meta matcher utilities implementing progressively more advanced
+ * strategies. Each matcher builds on the previous one in line with the
+ * open-closed principle.
  */
-const createMatcher = <
-	M extends RoleMeta,
-	A extends Actor,
+
+/** Matcher for role based meta information. */
+function matchRole<
+	A extends Actor = Actor,
 	Act = string,
 	C extends Context = Context,
->(options: {
-	operation?: boolean;
-	resource?: boolean;
-	attribute?: boolean;
-}): MetaMatcher<M, A, Act, C> => {
-	return (meta, actor, action, context) => {
-		if (!meta) return true;
-		if (hasRole(actor, meta.role) === false) return false;
-		if (
-			options.operation &&
-			"operation" in meta &&
-			meta.operation !== undefined &&
-			meta.operation !== action
-		) {
-			return false;
-		}
-		if (
-			options.resource &&
-			"resource" in meta &&
-			meta.resource !== undefined &&
-			meta.resource !== (context as { resource?: string }).resource
-		) {
-			return false;
-		}
-                if (options.attribute && (meta as Record<string, unknown>).attribute) {
-                        const { key, value, reference } = (meta as unknown as {
-                                attribute: AttributeMatcher<A>;
-                        }).attribute;
-			const ctxVal = (context as Record<string, unknown>)[key];
-			if (reference !== undefined) {
-				if (ctxVal !== (actor as Record<string, unknown>)[reference as string])
-					return false;
-			} else if (value !== undefined) {
-				if (ctxVal !== value) return false;
-			}
-		}
-		return true;
-	};
-};
+>(meta: RoleMeta | undefined, actor: A, _action: Act, _context: C): boolean {
+	if (!meta) return true;
+	const roles = Array.isArray(meta.role) ? meta.role : [meta.role ?? ""];
+	return roles.includes((actor as { role?: string }).role ?? "");
+}
+
+/** Matcher for role & operation meta. */
+function matchRoleOperation<
+	A extends Actor = Actor,
+	Act = string,
+	C extends Context = Context,
+>(
+	meta: RoleOperationMeta | undefined,
+	actor: A,
+	action: Act,
+	context: C,
+): boolean {
+	if (matchRole(meta, actor, action, context) === false) return false;
+	return meta?.operation === undefined || meta.operation === action;
+}
+
+/** Matcher for resource, role & operation meta. */
+function matchResourceRoleOperation<
+	A extends Actor = Actor,
+	Act = string,
+	C extends Context = Context,
+>(
+	meta: ResourceRoleOperationMeta | undefined,
+	actor: A,
+	action: Act,
+	context: C,
+): boolean {
+	if (matchRoleOperation(meta, actor, action, context) === false) return false;
+	const resource = (context as { resource?: string }).resource;
+	return meta?.resource === undefined || meta.resource === resource;
+}
+
+/** Matcher for resource, role, operation & attribute meta. */
+function matchResourceRoleOperationAttribute<
+	A extends Actor = Actor,
+	Act = string,
+	C extends Context = Context,
+>(
+	meta: ResourceRoleOperationAttributeMeta<A> | undefined,
+	actor: A,
+	action: Act,
+	context: C,
+): boolean {
+	if (matchResourceRoleOperation(meta, actor, action, context) === false) {
+		return false;
+	}
+	const attribute = meta?.attribute;
+	if (!attribute) return true;
+	const value = (context as Record<string, unknown>)[attribute.key];
+	if (attribute.reference !== undefined) {
+		return (
+			value ===
+			(actor as Record<string, unknown>)[attribute.reference as string]
+		);
+	}
+	if (attribute.value !== undefined) {
+		return value === attribute.value;
+	}
+	return true;
+}
 
 /** Role based engine implementation. */
 export class RoleEngine<
@@ -95,7 +123,7 @@ export class RoleEngine<
 	C extends Context = Context,
 > extends RuleEngine<RoleMeta, A, Act, C> {
 	constructor() {
-		super(createMatcher<RoleMeta, A, Act, C>({}));
+		super(matchRole as MetaMatcher<RoleMeta, A, Act, C>);
 	}
 }
 
@@ -106,7 +134,7 @@ export class RoleOperationEngine<
 	C extends Context = Context,
 > extends RuleEngine<RoleOperationMeta, A, Act, C> {
 	constructor() {
-		super(createMatcher<RoleOperationMeta, A, Act, C>({ operation: true }));
+		super(matchRoleOperation as MetaMatcher<RoleOperationMeta, A, Act, C>);
 	}
 }
 
@@ -118,10 +146,12 @@ export class ResourceRoleOperationEngine<
 > extends RuleEngine<ResourceRoleOperationMeta, A, Act, C> {
 	constructor() {
 		super(
-			createMatcher<ResourceRoleOperationMeta, A, Act, C>({
-				operation: true,
-				resource: true,
-			}),
+			matchResourceRoleOperation as MetaMatcher<
+				ResourceRoleOperationMeta,
+				A,
+				Act,
+				C
+			>,
 		);
 	}
 }
@@ -134,11 +164,12 @@ export class ResourceRoleOperationAttributeEngine<
 > extends RuleEngine<ResourceRoleOperationAttributeMeta<A>, A, Act, C> {
 	constructor() {
 		super(
-			createMatcher<ResourceRoleOperationAttributeMeta<A>, A, Act, C>({
-				operation: true,
-				resource: true,
-				attribute: true,
-			}),
+			matchResourceRoleOperationAttribute as MetaMatcher<
+				ResourceRoleOperationAttributeMeta<A>,
+				A,
+				Act,
+				C
+			>,
 		);
 	}
 }
