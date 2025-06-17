@@ -22,12 +22,12 @@ bun test
 
 ## Examples
 
-### 1. Minimal check with `checkAccess`
+### 1. Minimal check with `ResourceRoleOperationEngine`
 
-Below is a minimal example of using `checkAccess` to see if a user can pay their invoice:
+Below is a minimal example of using the built-in strategy engine to see if a user can pay their invoice:
 
 ```ts
-import { checkAccess, type Rule } from "@soudasuwa/permissions";
+import { ResourceRoleOperationEngine, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   Admin = "admin",
@@ -52,17 +52,7 @@ interface Meta {
   resource?: Resource;
 }
 
-const matcher: MetaMatcher<Meta> = (meta, actor, action, ctx) => {
-  if (!meta) return true;
-  const { role, operation, resource } = meta;
-  if (role) {
-    const roles = Array.isArray(role) ? role : [role];
-    if (!roles.includes((actor as { role?: Role }).role ?? Role.User)) return false;
-  }
-  if (resource && resource !== (ctx as { resource?: Resource }).resource) return false;
-  if (operation && operation !== action) return false;
-  return true;
-};
+const engine = new ResourceRoleOperationEngine();
 
 const rules: readonly Rule<Meta>[] = [
   {
@@ -76,8 +66,7 @@ const context = {
   resource: "invoice",
   status: InvoiceStatus.Pending,
 };
-
-const allowed = checkAccess(rules, actor, Operation.Pay, context, matcher);
+const allowed = engine.checkAccess(rules, actor, Operation.Pay, context);
 console.log(allowed); // true
 ```
 
@@ -86,7 +75,7 @@ console.log(allowed); // true
 Use the `reference` helper to compare context values to properties on the actor.
 
 ```ts
-import { checkAccess, type Rule } from "@soudasuwa/permissions";
+import { ResourceRoleOperationEngine, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   User = "user",
@@ -111,10 +100,11 @@ const rules: readonly Rule<Meta>[] = [
   },
 ];
 
+const engine = new ResourceRoleOperationEngine();
 const actor = { id: "abc", role: Role.User };
 const context = { resource: "invoice", userId: "abc" };
 
-checkAccess(rules, actor, Operation.View, context, matcher); // true
+engine.checkAccess(rules, actor, Operation.View, context); // true
 ```
 
 ### 3. `in` and `not` conditions
@@ -122,7 +112,7 @@ checkAccess(rules, actor, Operation.View, context, matcher); // true
 The engine understands both inclusion lists and negated matches.
 
 ```ts
-import { checkAccess, type Rule } from "@soudasuwa/permissions";
+import { ResourceRoleOperationEngine, type Rule } from "@soudasuwa/permissions";
 
 enum Role {
   Admin = "admin",
@@ -157,14 +147,15 @@ const rules: readonly Rule<Meta>[] = [
   },
 ];
 
+const engine = new ResourceRoleOperationEngine();
 const actor = { id: "1", role: Role.Admin };
-checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Draft }, matcher); // true
-checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Complete }, matcher); // false
+engine.checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Draft }); // true
+engine.checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Complete }); // false
 ```
 
 ### 4. Nested rules
 
-Rules can be nested to express complex permission trees. `checkAccess` traverses these `rules` arrays recursively.
+Rules can be nested to express complex permission trees. The engine traverses these `rules` arrays recursively.
 
 ```ts
 import { Rule } from "@soudasuwa/permissions";

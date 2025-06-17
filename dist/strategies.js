@@ -13,9 +13,9 @@ const hasRole = (actor, role) => {
  */
 /** Matcher for role based meta information. */
 function matchRole(meta, actor, _action, _context) {
-    if (!meta)
+    if (!meta || meta.role === undefined)
         return true;
-    const roles = Array.isArray(meta.role) ? meta.role : [meta.role ?? ""];
+    const roles = Array.isArray(meta.role) ? meta.role : [meta.role];
     return roles.includes(actor.role ?? "");
 }
 /** Matcher for role & operation meta. */

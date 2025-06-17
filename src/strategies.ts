@@ -51,8 +51,8 @@ function matchRole<
 	Act = string,
 	C extends Context = Context,
 >(meta: RoleMeta | undefined, actor: A, _action: Act, _context: C): boolean {
-	if (!meta) return true;
-	const roles = Array.isArray(meta.role) ? meta.role : [meta.role ?? ""];
+	if (!meta || meta.role === undefined) return true;
+	const roles = Array.isArray(meta.role) ? meta.role : [meta.role];
 	return roles.includes((actor as { role?: string }).role ?? "");
 }
 
