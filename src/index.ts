@@ -6,4 +6,4 @@ export type {
 	Condition,
 } from "@/types";
 export { matchCondition } from "@/conditions";
-export { checkAccess, matchesRule } from "@/engine";
+export { RuleEngine, checkAccess, matchesRule } from "@/engine";

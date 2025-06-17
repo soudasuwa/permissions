@@ -3,6 +3,7 @@ import {
 	matchCondition,
 	matchesRule,
 	checkAccess,
+	RuleEngine,
 	type Actor,
 	type Context,
 	type Rule,
@@ -529,5 +530,31 @@ describe("additional helpers", () => {
 		expect(checkAccess([], dummyActor, Operation.View, ctx, matcher)).toBe(
 			false,
 		);
+	});
+});
+
+describe("RuleEngine class", () => {
+	const engine = new RuleEngine<StdMeta, Actor, Operation, Context>(matcher);
+
+	it("provides synchronous evaluation", () => {
+		const rule: Rule<StdMeta> = {
+			meta: {
+				role: Role.Admin,
+				operation: Operation.View,
+				resource: "invoice",
+			},
+			match: { status: Status.Pending },
+		};
+		const ctx = { resource: "invoice", status: Status.Pending } as const;
+		expect(engine.matchesRule(rule, dummyActor, Operation.View, ctx)).toBe(
+			true,
+		);
+	});
+
+	it("supports asynchronous evaluation", async () => {
+		const ctx = { resource: "invoice", status: Status.Draft } as const;
+		await expect(
+			engine.checkAccessAsync(complexRules, dummyActor, Operation.Edit, ctx),
+		).resolves.toBe(true);
 	});
 });

@@ -8,9 +8,7 @@ export const isNotCondition = (
 export const isInCondition = (
 	val: unknown,
 ): val is import("@/types").InCondition =>
-	isObject(val) &&
-	"in" in val &&
-	Array.isArray((val as { in: unknown }).in);
+	isObject(val) && "in" in val && Array.isArray((val as { in: unknown }).in);
 
 export const isReferenceCondition = (
 	val: unknown,
