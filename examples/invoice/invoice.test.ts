@@ -1,26 +1,9 @@
 import { describe, it, expect } from "bun:test";
 
-import { checkAccess, type MetaMatcher } from "@soudasuwa/permissions";
+import { ResourceRoleOperationEngine } from "@soudasuwa/permissions";
 import { rules, Operation } from "./rules";
 
-interface StdMeta {
-	role?: string | readonly string[];
-	operation?: string;
-	resource?: string;
-}
-
-const matcher: MetaMatcher<StdMeta> = (meta, actor, action, context) => {
-	if (!meta) return true;
-	const { role, operation, resource } = meta;
-	if (role) {
-		const roles = Array.isArray(role) ? role : [role];
-		if (!roles.includes((actor as { role?: string }).role ?? "")) return false;
-	}
-	if (operation && operation !== action) return false;
-	if (resource && resource !== (context as { resource?: string }).resource)
-		return false;
-	return true;
-};
+const engine = new ResourceRoleOperationEngine();
 
 const mock = {
 	invoice: {
@@ -45,7 +28,7 @@ const mock = {
 describe("Invoice access control", () => {
 	describe("Module role", () => {
 		it("Can edit invoice in Generating status", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("module"),
 				Operation.Edit,
@@ -53,13 +36,12 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Generating"),
 					payload: { status: "Draft" },
 				},
-				matcher,
 			);
 			expect(result).toBe(true);
 		});
 
 		it("Cannot edit invoice in Draft status", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("module"),
 				Operation.Edit,
@@ -67,18 +49,16 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Draft"),
 					payload: { status: "Pending" },
 				},
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
 
 		it("Cannot view Generating invoice", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("module"),
 				Operation.View,
 				mock.invoice.status("Generating"),
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -86,7 +66,7 @@ describe("Invoice access control", () => {
 
 	describe("Admin role", () => {
 		it("Can edit invoice in Draft status", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("admin"),
 				Operation.Edit,
@@ -94,13 +74,12 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Draft"),
 					payload: { status: "Pending" },
 				},
-				matcher,
 			);
 			expect(result).toBe(true);
 		});
 
 		it("Can edit invoice in Pending status", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("admin"),
 				Operation.Edit,
@@ -108,13 +87,12 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Pending"),
 					payload: { status: "Draft" },
 				},
-				matcher,
 			);
 			expect(result).toBe(true);
 		});
 
 		it("Cannot edit invoice in Generating status", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("admin"),
 				Operation.Edit,
@@ -122,24 +100,22 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Generating"),
 					payload: { status: "Draft" },
 				},
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
 
 		it("Can view Complete invoice", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("admin"),
 				Operation.View,
 				mock.invoice.status("Complete"),
-				matcher,
 			);
 			expect(result).toBe(true);
 		});
 
 		it("Cannot edit Complete invoice", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("admin"),
 				Operation.Edit,
@@ -147,7 +123,6 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Complete"),
 					payload: { status: "Pending" },
 				},
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -155,73 +130,67 @@ describe("Invoice access control", () => {
 
 	describe("Customer role", () => {
 		it("Can view Pending invoice", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("user"),
 				Operation.View,
 				mock.invoice.status("Pending"),
-				matcher,
 			);
 			expect(result).toBe(true);
 		});
 
 		it("Can pay Pending invoice", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("user"),
 				Operation.Pay,
 				mock.invoice.status("Pending"),
-				matcher,
 			);
 			expect(result).toBe(true);
 		});
 
 		it("Cannot view Draft invoice", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("user"),
 				Operation.View,
 				mock.invoice.status("Draft"),
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
 
 		it("Cannot view Generating invoice", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("user"),
 				Operation.View,
 				mock.invoice.status("Generating"),
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
 
 		it("Can view Complete invoice", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("user"),
 				Operation.View,
 				mock.invoice.status("Complete"),
-				matcher,
 			);
 			expect(result).toBe(true);
 		});
 
 		it("Cannot pay Complete invoice", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("user"),
 				Operation.Pay,
 				mock.invoice.status("Complete"),
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
 
 		it("Cannot pay someone else's invoice", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				{ ...mock.actor.role("user"), id: "someone-else" },
 				Operation.Pay,
@@ -229,7 +198,6 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Pending"),
 					userId: "different-user",
 				},
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -237,7 +205,7 @@ describe("Invoice access control", () => {
 
 	describe("Module create permission", () => {
 		it("Can create invoice when payload.status is Generating", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("module"),
 				Operation.Create,
@@ -245,13 +213,12 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Generating"),
 					payload: { status: "Generating" },
 				},
-				matcher,
 			);
 			expect(result).toBe(true);
 		});
 
 		it("Cannot create invoice when payload.status is not Generating", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("module"),
 				Operation.Create,
@@ -259,7 +226,6 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Draft"),
 					payload: { status: "Draft" },
 				},
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -267,7 +233,7 @@ describe("Invoice access control", () => {
 
 	describe("Admin create permission", () => {
 		it("Can create invoice when payload.status is not Generating", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("admin"),
 				Operation.Create,
@@ -275,13 +241,12 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Draft"),
 					payload: { status: "Draft" },
 				},
-				matcher,
 			);
 			expect(result).toBe(true);
 		});
 
 		it("Cannot create invoice when payload.status is Generating", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("admin"),
 				Operation.Create,
@@ -289,7 +254,6 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Generating"),
 					payload: { status: "Generating" },
 				},
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
@@ -297,7 +261,7 @@ describe("Invoice access control", () => {
 
 	describe("User create permission", () => {
 		it("Users cannot create invoices", () => {
-			const result = checkAccess(
+			const result = engine.checkAccess(
 				rules,
 				mock.actor.role("user"),
 				Operation.Create,
@@ -305,7 +269,6 @@ describe("Invoice access control", () => {
 					...mock.invoice.status("Pending"),
 					payload: { status: "Pending" },
 				},
-				matcher,
 			);
 			expect(result).toBe(false);
 		});
