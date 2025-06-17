@@ -12,3 +12,5 @@ export {
 	checkAccess,
 	matchesRule,
 } from "@/engine";
+
+export * from "@/strategies";
