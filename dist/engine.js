@@ -1,24 +1,46 @@
 import { matchCondition } from "@/conditions";
-export const matchesRule = (rule, actor, action, context, matchMeta) => {
-    if (!matchMeta(rule.meta, actor, action, context))
-        return false;
-    return matchContextConditions(rule.match, context, actor);
-};
-const matchContextConditions = (match, context, actor) => {
-    if (!match)
-        return true;
-    return Object.entries(match).every(([field, cond]) => matchCondition(context?.[field], cond, actor));
-};
 /**
- * Recursively evaluate a rules array, returning true as soon as a matching
- * rule chain is found.
+ * Base implementation for rule evaluation. Subclasses can override the
+ * behaviour of meta and condition matching to support custom strategies.
  */
-export const checkAccess = (rules, actor, action, context, matchMeta) => {
-    for (const r of rules) {
-        if (!matchesRule(r, actor, action, context, matchMeta))
-            continue;
-        if (!r.rules || checkAccess(r.rules, actor, action, context, matchMeta))
-            return true;
+export class AbstractRuleEngine {
+    metaMatcher;
+    conditionMatcher;
+    constructor(metaMatcher, conditionMatcher) {
+        this.metaMatcher = metaMatcher;
+        this.conditionMatcher = conditionMatcher;
     }
-    return false;
-};
+    /** Determine whether a rule matches the provided actor, action and context. */
+    matchesRule(rule, actor, action, context) {
+        if (this.metaMatcher(rule.meta, actor, action, context) === false) {
+            return false;
+        }
+        return this.matchContextConditions(rule.match, context, actor);
+    }
+    /** Recursively evaluate an array of rules. */
+    checkAccess(rules, actor, action, context) {
+        for (const current of rules) {
+            if (this.matchesRule(current, actor, action, context) === false) {
+                continue;
+            }
+            if (current.rules === undefined ||
+                this.checkAccess(current.rules, actor, action, context) === true) {
+                return true;
+            }
+        }
+        return false;
+    }
+    matchContextConditions(conditions, context, actor) {
+        if (conditions === undefined) {
+            return true;
+        }
+        return Object.entries(conditions).every(([field, cond]) => this.conditionMatcher(context[field], cond, actor));
+    }
+}
+export class RuleEngine extends AbstractRuleEngine {
+    constructor(matchMeta, conditionMatcher = matchCondition) {
+        super(matchMeta, conditionMatcher);
+    }
+}
+export const matchesRule = (rule, actor, action, context, matchMeta) => new RuleEngine(matchMeta).matchesRule(rule, actor, action, context);
+export const checkAccess = (rules, actor, action, context, matchMeta) => new RuleEngine(matchMeta).checkAccess(rules, actor, action, context);
