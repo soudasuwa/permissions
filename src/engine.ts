@@ -1,79 +1,90 @@
 import type { Actor, Context, Rule, MetaMatcher, Condition } from "@/types";
 import { matchCondition } from "@/conditions";
 
+export type ConditionMatcher<A extends Actor = Actor> = (
+	value: unknown,
+	condition: Condition,
+	actor: A,
+) => boolean;
+
 /**
- * Central evaluator for permission rules. It exposes both synchronous and
- * asynchronous APIs to allow future extensions such as remote checks.
+ * Base implementation for rule evaluation. Subclasses can override the
+ * behaviour of meta and condition matching to support custom strategies.
  */
-export class RuleEngine<
+export abstract class AbstractRuleEngine<
 	M extends Record<string, unknown> = Record<string, unknown>,
 	A extends Actor = Actor,
 	Act = string,
 	C extends Context = Context,
 > {
-	constructor(private readonly matchMeta: MetaMatcher<M, A, Act, C>) {}
+	protected constructor(
+		private readonly metaMatcher: MetaMatcher<M, A, Act, C>,
+		private readonly conditionMatcher: ConditionMatcher<A>,
+	) {}
 
-	/**
-	 * Determine whether a single rule matches the provided actor, action and context.
-	 */
+	/** Determine whether a rule matches the provided actor, action and context. */
 	public matchesRule(
 		rule: Rule<M>,
 		actor: A,
 		action: Act,
 		context: C,
 	): boolean {
-		if (!this.matchMeta(rule.meta, actor, action, context)) return false;
+		if (this.metaMatcher(rule.meta, actor, action, context) === false) {
+			return false;
+		}
 		return this.matchContextConditions(rule.match, context, actor);
 	}
 
-	/**
-	 * Recursively evaluate a rules array, returning `true` as soon as a
-	 * matching rule chain is found.
-	 */
+	/** Recursively evaluate an array of rules. */
 	public checkAccess(
 		rules: readonly Rule<M>[],
 		actor: A,
 		action: Act,
 		context: C,
 	): boolean {
-		for (const r of rules) {
-			if (!this.matchesRule(r, actor, action, context)) continue;
-			if (!r.rules || this.checkAccess(r.rules, actor, action, context))
-				return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Asynchronous variant of {@link checkAccess}. Useful when custom
-	 * matchers perform async operations.
-	 */
-	public async checkAccessAsync(
-		rules: readonly Rule<M>[],
-		actor: A,
-		action: Act,
-		context: C,
-	): Promise<boolean> {
-		for (const r of rules) {
-			if (!this.matchesRule(r, actor, action, context)) continue;
+		for (const current of rules) {
+			if (this.matchesRule(current, actor, action, context) === false) {
+				continue;
+			}
 			if (
-				!r.rules ||
-				(await this.checkAccessAsync(r.rules, actor, action, context))
-			)
+				current.rules === undefined ||
+				this.checkAccess(current.rules, actor, action, context) === true
+			) {
 				return true;
+			}
 		}
 		return false;
 	}
 
 	private matchContextConditions(
-		match: Readonly<Record<string, Condition>> | undefined,
+		conditions: Readonly<Record<string, Condition>> | undefined,
 		context: C,
 		actor: A,
 	): boolean {
-		if (!match) return true;
-		return Object.entries(match).every(([field, cond]) =>
-			matchCondition((context as Record<string, unknown>)[field], cond, actor),
+		if (conditions === undefined) {
+			return true;
+		}
+		return Object.entries(conditions).every(([field, cond]) =>
+			this.conditionMatcher(
+				(context as Record<string, unknown>)[field],
+				cond,
+				actor,
+			),
 		);
+	}
+}
+
+export class RuleEngine<
+	M extends Record<string, unknown> = Record<string, unknown>,
+	A extends Actor = Actor,
+	Act = string,
+	C extends Context = Context,
+> extends AbstractRuleEngine<M, A, Act, C> {
+	constructor(
+		matchMeta: MetaMatcher<M, A, Act, C>,
+		conditionMatcher: ConditionMatcher<A> = matchCondition,
+	) {
+		super(matchMeta, conditionMatcher);
 	}
 }
 

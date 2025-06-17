@@ -1,52 +1,45 @@
 import { matchCondition } from "@/conditions";
 /**
- * Central evaluator for permission rules. It exposes both synchronous and
- * asynchronous APIs to allow future extensions such as remote checks.
+ * Base implementation for rule evaluation. Subclasses can override the
+ * behaviour of meta and condition matching to support custom strategies.
  */
-export class RuleEngine {
-    matchMeta;
-    constructor(matchMeta) {
-        this.matchMeta = matchMeta;
+export class AbstractRuleEngine {
+    metaMatcher;
+    conditionMatcher;
+    constructor(metaMatcher, conditionMatcher) {
+        this.metaMatcher = metaMatcher;
+        this.conditionMatcher = conditionMatcher;
     }
-    /**
-     * Determine whether a single rule matches the provided actor, action and context.
-     */
+    /** Determine whether a rule matches the provided actor, action and context. */
     matchesRule(rule, actor, action, context) {
-        if (!this.matchMeta(rule.meta, actor, action, context))
+        if (this.metaMatcher(rule.meta, actor, action, context) === false) {
             return false;
+        }
         return this.matchContextConditions(rule.match, context, actor);
     }
-    /**
-     * Recursively evaluate a rules array, returning `true` as soon as a
-     * matching rule chain is found.
-     */
+    /** Recursively evaluate an array of rules. */
     checkAccess(rules, actor, action, context) {
-        for (const r of rules) {
-            if (!this.matchesRule(r, actor, action, context))
+        for (const current of rules) {
+            if (this.matchesRule(current, actor, action, context) === false) {
                 continue;
-            if (!r.rules || this.checkAccess(r.rules, actor, action, context))
+            }
+            if (current.rules === undefined ||
+                this.checkAccess(current.rules, actor, action, context) === true) {
                 return true;
+            }
         }
         return false;
     }
-    /**
-     * Asynchronous variant of {@link checkAccess}. Useful when custom
-     * matchers perform async operations.
-     */
-    async checkAccessAsync(rules, actor, action, context) {
-        for (const r of rules) {
-            if (!this.matchesRule(r, actor, action, context))
-                continue;
-            if (!r.rules ||
-                (await this.checkAccessAsync(r.rules, actor, action, context)))
-                return true;
-        }
-        return false;
-    }
-    matchContextConditions(match, context, actor) {
-        if (!match)
+    matchContextConditions(conditions, context, actor) {
+        if (conditions === undefined) {
             return true;
-        return Object.entries(match).every(([field, cond]) => matchCondition(context[field], cond, actor));
+        }
+        return Object.entries(conditions).every(([field, cond]) => this.conditionMatcher(context[field], cond, actor));
+    }
+}
+export class RuleEngine extends AbstractRuleEngine {
+    constructor(matchMeta, conditionMatcher = matchCondition) {
+        super(matchMeta, conditionMatcher);
     }
 }
 export const matchesRule = (rule, actor, action, context, matchMeta) => new RuleEngine(matchMeta).matchesRule(rule, actor, action, context);

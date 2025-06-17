@@ -551,10 +551,10 @@ describe("RuleEngine class", () => {
 		);
 	});
 
-	it("supports asynchronous evaluation", async () => {
+	it("evaluates complex rules", () => {
 		const ctx = { resource: "invoice", status: Status.Draft } as const;
-		await expect(
-			engine.checkAccessAsync(complexRules, dummyActor, Operation.Edit, ctx),
-		).resolves.toBe(true);
+		expect(
+			engine.checkAccess(complexRules, dummyActor, Operation.Edit, ctx),
+		).toBe(true);
 	});
 });
