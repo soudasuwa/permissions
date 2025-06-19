@@ -49,9 +49,9 @@ export class AccessRequestBuilder<
 		return this;
 	}
 
-    public with<K extends keyof C>(key: K, value: C[K]): this {
-        return this.withContext({ [key]: value } as unknown as Partial<C>);
-    }
+	public with<K extends keyof C>(key: K, value: C[K]): this {
+		return this.withContext({ [key]: value } as unknown as Partial<C>);
+	}
 
 	public permit(): Permit & P {
 		const allowed = this.engine.permit(this.actor, this.action, this.context);
