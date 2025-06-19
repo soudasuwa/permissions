@@ -6,9 +6,11 @@ import { matchCondition } from "@/conditions";
 export class AbstractRuleEngine {
     metaMatcher;
     conditionMatcher;
-    constructor(metaMatcher, conditionMatcher) {
+    rules;
+    constructor(metaMatcher, conditionMatcher, rules) {
         this.metaMatcher = metaMatcher;
         this.conditionMatcher = conditionMatcher;
+        this.rules = rules;
     }
     /** Determine whether a rule matches the provided actor, action and context. */
     matchesRule(rule, actor, action, context) {
@@ -18,13 +20,13 @@ export class AbstractRuleEngine {
         return this.matchContextConditions(rule.match, context, actor);
     }
     /** Recursively evaluate an array of rules. */
-    checkAccess(rules, actor, action, context) {
+    permit(actor, action, context, rules = this.rules ?? []) {
         for (const current of rules) {
             if (this.matchesRule(current, actor, action, context) === false) {
                 continue;
             }
             if (current.rules === undefined ||
-                this.checkAccess(current.rules, actor, action, context) === true) {
+                this.permit(actor, action, context, current.rules) === true) {
                 return true;
             }
         }
@@ -38,9 +40,9 @@ export class AbstractRuleEngine {
     }
 }
 export class RuleEngine extends AbstractRuleEngine {
-    constructor(matchMeta, conditionMatcher = matchCondition) {
-        super(matchMeta, conditionMatcher);
+    constructor(matchMeta, conditionMatcher = matchCondition, rules) {
+        super(matchMeta, conditionMatcher, rules);
     }
 }
 export const matchesRule = (rule, actor, action, context, matchMeta) => new RuleEngine(matchMeta).matchesRule(rule, actor, action, context);
-export const checkAccess = (rules, actor, action, context, matchMeta) => new RuleEngine(matchMeta).checkAccess(rules, actor, action, context);
+export const permit = (rules, actor, action, context, matchMeta) => new RuleEngine(matchMeta, matchCondition, rules).permit(actor, action, context);

@@ -52,7 +52,7 @@ interface Meta {
   resource?: Resource;
 }
 
-const engine = new ResourceRoleOperationEngine();
+const engine = new ResourceRoleOperationEngine(rules);
 
 const rules: readonly Rule<Meta>[] = [
   {
@@ -66,7 +66,7 @@ const context = {
   resource: "invoice",
   status: InvoiceStatus.Pending,
 };
-const allowed = engine.checkAccess(rules, actor, Operation.Pay, context);
+const allowed = engine.permit(actor, Operation.Pay, context);
 console.log(allowed); // true
 ```
 
@@ -100,11 +100,11 @@ const rules: readonly Rule<Meta>[] = [
   },
 ];
 
-const engine = new ResourceRoleOperationEngine();
+const engine = new ResourceRoleOperationEngine(rules);
 const actor = { id: "abc", role: Role.User };
 const context = { resource: "invoice", userId: "abc" };
 
-engine.checkAccess(rules, actor, Operation.View, context); // true
+engine.permit(actor, Operation.View, context); // true
 ```
 
 ### 3. `in` and `not` conditions
@@ -147,10 +147,10 @@ const rules: readonly Rule<Meta>[] = [
   },
 ];
 
-const engine = new ResourceRoleOperationEngine();
+const engine = new ResourceRoleOperationEngine(rules);
 const actor = { id: "1", role: Role.Admin };
-engine.checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Draft }); // true
-engine.checkAccess(rules, actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Complete }); // false
+engine.permit(actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Draft }); // true
+engine.permit(actor, Operation.Edit, { resource: "invoice", status: InvoiceStatus.Complete }); // false
 ```
 
 ### 4. Nested rules

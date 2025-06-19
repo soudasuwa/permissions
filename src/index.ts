@@ -9,7 +9,7 @@ export { matchCondition } from "@/conditions";
 export {
 	RuleEngine,
 	AbstractRuleEngine,
-	checkAccess,
+	permit,
 	matchesRule,
 } from "@/engine";
 

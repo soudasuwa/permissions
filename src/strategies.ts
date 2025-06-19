@@ -1,5 +1,6 @@
-import type { Actor, Context, MetaMatcher } from "@/types";
+import type { Actor, Context, MetaMatcher, Rule } from "@/types";
 import { RuleEngine } from "@/engine";
+import { matchCondition } from "@/conditions";
 
 /** Meta information for role based strategies. */
 export interface RoleMeta extends Record<string, unknown> {
@@ -122,8 +123,8 @@ export class RoleEngine<
 	Act = string,
 	C extends Context = Context,
 > extends RuleEngine<RoleMeta, A, Act, C> {
-	constructor() {
-		super(matchRole as MetaMatcher<RoleMeta, A, Act, C>);
+	constructor(rules?: readonly Rule<RoleMeta>[]) {
+		super(matchRole as MetaMatcher<RoleMeta, A, Act, C>, matchCondition, rules);
 	}
 }
 
@@ -133,8 +134,12 @@ export class RoleOperationEngine<
 	Act = string,
 	C extends Context = Context,
 > extends RuleEngine<RoleOperationMeta, A, Act, C> {
-	constructor() {
-		super(matchRoleOperation as MetaMatcher<RoleOperationMeta, A, Act, C>);
+	constructor(rules?: readonly Rule<RoleOperationMeta>[]) {
+		super(
+			matchRoleOperation as MetaMatcher<RoleOperationMeta, A, Act, C>,
+			matchCondition,
+			rules,
+		);
 	}
 }
 
@@ -144,7 +149,7 @@ export class ResourceRoleOperationEngine<
 	Act = string,
 	C extends Context = Context,
 > extends RuleEngine<ResourceRoleOperationMeta, A, Act, C> {
-	constructor() {
+	constructor(rules?: readonly Rule<ResourceRoleOperationMeta>[]) {
 		super(
 			matchResourceRoleOperation as MetaMatcher<
 				ResourceRoleOperationMeta,
@@ -152,6 +157,8 @@ export class ResourceRoleOperationEngine<
 				Act,
 				C
 			>,
+			matchCondition,
+			rules,
 		);
 	}
 }
@@ -162,7 +169,7 @@ export class ResourceRoleOperationAttributeEngine<
 	Act = string,
 	C extends Context = Context,
 > extends RuleEngine<ResourceRoleOperationAttributeMeta<A>, A, Act, C> {
-	constructor() {
+	constructor(rules?: readonly Rule<ResourceRoleOperationAttributeMeta<A>>[]) {
 		super(
 			matchResourceRoleOperationAttribute as MetaMatcher<
 				ResourceRoleOperationAttributeMeta<A>,
@@ -170,6 +177,8 @@ export class ResourceRoleOperationAttributeEngine<
 				Act,
 				C
 			>,
+			matchCondition,
+			rules,
 		);
 	}
 }

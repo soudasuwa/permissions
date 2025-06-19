@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
 	matchCondition,
 	matchesRule,
-	checkAccess,
+	permit,
 	RuleEngine,
 	type Actor,
 	type Context,
@@ -201,7 +201,7 @@ describe("matchesRule", () => {
 	});
 });
 
-describe("checkAccess simple", () => {
+describe("permit simple", () => {
 	const rules: readonly Rule<StdMeta>[] = [
 		{
 			meta: {
@@ -215,11 +215,11 @@ describe("checkAccess simple", () => {
 	const ctx = { resource: "invoice" } as const;
 
 	it("allows matching meta", () => {
-		expect(checkAccess(rules, actor, Operation.View, ctx, matcher)).toBe(true);
+		expect(permit(rules, actor, Operation.View, ctx, matcher)).toBe(true);
 	});
 
 	it("rejects mismatched meta", () => {
-		expect(checkAccess(rules, actor, Operation.Edit, ctx, matcher)).toBe(false);
+		expect(permit(rules, actor, Operation.Edit, ctx, matcher)).toBe(false);
 	});
 });
 
@@ -233,14 +233,14 @@ describe("invoice rules scenario", () => {
 
 	it("admin can edit draft invoice", () => {
 		const ctx = { resource: "invoice", status: Status.Draft } as const;
-		expect(checkAccess(complexRules, admin, Operation.Edit, ctx, matcher)).toBe(
+		expect(permit(complexRules, admin, Operation.Edit, ctx, matcher)).toBe(
 			true,
 		);
 	});
 
 	it("admin cannot edit complete invoice", () => {
 		const ctx = { resource: "invoice", status: Status.Complete } as const;
-		expect(checkAccess(complexRules, admin, Operation.Edit, ctx, matcher)).toBe(
+		expect(permit(complexRules, admin, Operation.Edit, ctx, matcher)).toBe(
 			false,
 		);
 	});
@@ -252,7 +252,7 @@ describe("invoice rules scenario", () => {
 			payload: { status: Status.Generating },
 		} as const;
 		expect(
-			checkAccess(complexRules, moduleActor, Operation.Create, ctx, matcher),
+			permit(complexRules, moduleActor, Operation.Create, ctx, matcher),
 		).toBe(true);
 	});
 
@@ -263,7 +263,7 @@ describe("invoice rules scenario", () => {
 			payload: { status: Status.Draft },
 		} as const;
 		expect(
-			checkAccess(complexRules, moduleActor, Operation.Create, ctx, matcher),
+			permit(complexRules, moduleActor, Operation.Create, ctx, matcher),
 		).toBe(false);
 	});
 
@@ -273,9 +273,7 @@ describe("invoice rules scenario", () => {
 			status: Status.Pending,
 			userId: "u1",
 		} as const;
-		expect(checkAccess(complexRules, user, Operation.View, ctx, matcher)).toBe(
-			true,
-		);
+		expect(permit(complexRules, user, Operation.View, ctx, matcher)).toBe(true);
 	});
 
 	it("user cannot pay someone else's invoice", () => {
@@ -284,9 +282,9 @@ describe("invoice rules scenario", () => {
 			status: Status.Pending,
 			userId: "u1",
 		} as const;
-		expect(
-			checkAccess(complexRules, otherUser, Operation.Pay, ctx, matcher),
-		).toBe(false);
+		expect(permit(complexRules, otherUser, Operation.Pay, ctx, matcher)).toBe(
+			false,
+		);
 	});
 });
 
@@ -311,28 +309,28 @@ describe("advanced nested rules", () => {
 	it("admin can view invoice", () => {
 		const ctx = { resource: "invoice" } as const;
 		expect(
-			checkAccess(advancedRules, dummyActor, Operation.View, ctx, matcher),
+			permit(advancedRules, dummyActor, Operation.View, ctx, matcher),
 		).toBe(true);
 	});
 
 	it("admin can edit draft invoice", () => {
 		const ctx = { resource: "invoice", status: Status.Draft } as const;
 		expect(
-			checkAccess(advancedRules, dummyActor, Operation.Edit, ctx, matcher),
+			permit(advancedRules, dummyActor, Operation.Edit, ctx, matcher),
 		).toBe(true);
 	});
 
 	it("admin cannot edit pending invoice", () => {
 		const ctx = { resource: "invoice", status: Status.Pending } as const;
 		expect(
-			checkAccess(advancedRules, dummyActor, Operation.Edit, ctx, matcher),
+			permit(advancedRules, dummyActor, Operation.Edit, ctx, matcher),
 		).toBe(false);
 	});
 
 	it("fails when role mismatch", () => {
 		const user: Actor = { id: "2", role: Role.User };
 		const ctx = { resource: "invoice" } as const;
-		expect(checkAccess(advancedRules, user, Operation.View, ctx, matcher)).toBe(
+		expect(permit(advancedRules, user, Operation.View, ctx, matcher)).toBe(
 			false,
 		);
 	});
@@ -382,7 +380,7 @@ describe("file system permissions", () => {
 			visibility: Visibility.Private,
 			ownerId: "o1",
 		} as const;
-		expect(checkAccess(fsRules, owner, FSOp.Delete, ctx, matcher)).toBe(true);
+		expect(permit(fsRules, owner, FSOp.Delete, ctx, matcher)).toBe(true);
 	});
 
 	it("editor can write own file", () => {
@@ -391,7 +389,7 @@ describe("file system permissions", () => {
 			visibility: Visibility.Private,
 			ownerId: "e1",
 		} as const;
-		expect(checkAccess(fsRules, editor, FSOp.Write, ctx, matcher)).toBe(true);
+		expect(permit(fsRules, editor, FSOp.Write, ctx, matcher)).toBe(true);
 	});
 
 	it("editor cannot write other's file", () => {
@@ -400,7 +398,7 @@ describe("file system permissions", () => {
 			visibility: Visibility.Private,
 			ownerId: "o1",
 		} as const;
-		expect(checkAccess(fsRules, editor, FSOp.Write, ctx, matcher)).toBe(false);
+		expect(permit(fsRules, editor, FSOp.Write, ctx, matcher)).toBe(false);
 	});
 
 	it("viewer can read public file", () => {
@@ -409,7 +407,7 @@ describe("file system permissions", () => {
 			visibility: Visibility.Public,
 			ownerId: "o1",
 		} as const;
-		expect(checkAccess(fsRules, viewer, FSOp.Read, ctx, matcher)).toBe(true);
+		expect(permit(fsRules, viewer, FSOp.Read, ctx, matcher)).toBe(true);
 	});
 
 	it("viewer cannot read private file of others", () => {
@@ -418,7 +416,7 @@ describe("file system permissions", () => {
 			visibility: Visibility.Private,
 			ownerId: "o1",
 		} as const;
-		expect(checkAccess(fsRules, viewer, FSOp.Read, ctx, matcher)).toBe(false);
+		expect(permit(fsRules, viewer, FSOp.Read, ctx, matcher)).toBe(false);
 	});
 });
 
@@ -478,7 +476,7 @@ describe("payment permissions", () => {
 			status: PayStatus.Pending,
 			userId: "c1",
 		} as const;
-		expect(checkAccess(payRules, customer, PayOp.Pay, ctx, matcher)).toBe(true);
+		expect(permit(payRules, customer, PayOp.Pay, ctx, matcher)).toBe(true);
 	});
 
 	it("customer cannot pay completed payment", () => {
@@ -487,30 +485,22 @@ describe("payment permissions", () => {
 			status: PayStatus.Completed,
 			userId: "c1",
 		} as const;
-		expect(checkAccess(payRules, customer, PayOp.Pay, ctx, matcher)).toBe(
-			false,
-		);
+		expect(permit(payRules, customer, PayOp.Pay, ctx, matcher)).toBe(false);
 	});
 
 	it("merchant can refund completed payment", () => {
 		const ctx = { resource: "payment", status: PayStatus.Completed } as const;
-		expect(checkAccess(payRules, merchant, PayOp.Refund, ctx, matcher)).toBe(
-			true,
-		);
+		expect(permit(payRules, merchant, PayOp.Refund, ctx, matcher)).toBe(true);
 	});
 
 	it("merchant cannot refund pending payment", () => {
 		const ctx = { resource: "payment", status: PayStatus.Pending } as const;
-		expect(checkAccess(payRules, merchant, PayOp.Refund, ctx, matcher)).toBe(
-			false,
-		);
+		expect(permit(payRules, merchant, PayOp.Refund, ctx, matcher)).toBe(false);
 	});
 
 	it("processor can cancel any payment", () => {
 		const ctx = { resource: "payment", status: PayStatus.Pending } as const;
-		expect(checkAccess(payRules, processor, PayOp.Cancel, ctx, matcher)).toBe(
-			true,
-		);
+		expect(permit(payRules, processor, PayOp.Cancel, ctx, matcher)).toBe(true);
 	});
 });
 
@@ -525,11 +515,9 @@ describe("additional helpers", () => {
 		);
 	});
 
-	it("checkAccess returns false when no rules provided", () => {
+	it("permit returns false when no rules provided", () => {
 		const ctx = { resource: "invoice" } as const;
-		expect(checkAccess([], dummyActor, Operation.View, ctx, matcher)).toBe(
-			false,
-		);
+		expect(permit([], dummyActor, Operation.View, ctx, matcher)).toBe(false);
 	});
 });
 
@@ -553,8 +541,8 @@ describe("RuleEngine class", () => {
 
 	it("evaluates complex rules", () => {
 		const ctx = { resource: "invoice", status: Status.Draft } as const;
-		expect(
-			engine.checkAccess(complexRules, dummyActor, Operation.Edit, ctx),
-		).toBe(true);
+		expect(engine.permit(dummyActor, Operation.Edit, ctx, complexRules)).toBe(
+			true,
+		);
 	});
 });
