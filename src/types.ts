@@ -45,3 +45,24 @@ export type MetaMatcher<
 	Act = string,
 	C extends Context = Context,
 > = (meta: M | undefined, actor: A, action: Act, context: C) => boolean;
+
+export interface Permit {
+	readonly allowed: boolean;
+}
+
+export interface AccessRequest<
+	M extends Record<string, unknown> = Record<string, unknown>,
+	A extends Actor = Actor,
+	Act = string,
+	C extends Context = Context,
+	P extends Permit = Permit,
+> {
+	withContext(ctx: Partial<C>): AccessRequest<M, A, Act, C, P>;
+	permit(): P;
+}
+
+export type ConditionMatcher<A extends Actor = Actor> = (
+	value: unknown,
+	condition: Condition,
+	actor: A,
+) => boolean;

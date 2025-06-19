@@ -180,3 +180,26 @@ export const nestedRules: readonly Rule<Meta>[] = [
   },
 ];
 ```
+
+### 5. Building access requests
+
+The engine can build a request object that gradually collects context before producing a permit.
+
+```ts
+import { createAccessRequest } from "@soudasuwa/permissions";
+
+const req = createAccessRequest(rules, matcher, actor, Operation.View);
+req.withContext({ resource: "invoice" });
+const permit = req.permit(); // { allowed: true }
+```
+
+## Integrations
+
+Optional framework integrations live in the `packages` directory. These packages extend the core engine without introducing additional dependencies.
+
+### Prisma
+
+The `packages/prisma` package exposes utilities to apply rule-based permissions to Prisma queries. It can convert
+rules into `select` objects and `where` clauses and makes use of the core `createAccessRequest` helper. The request is filled with
+context over time and finally yields a permit. That permit can then wrap a Prisma delegate so that calls like
+`findFirst` automatically merge the required `select` and `where` options.

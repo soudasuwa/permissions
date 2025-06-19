@@ -1,11 +1,15 @@
-import type { Actor, Context, Rule, MetaMatcher, Condition } from "@/types";
+import type {
+	Actor,
+	Context,
+	Rule,
+	MetaMatcher,
+	Condition,
+	Permit,
+	AccessRequest,
+	ConditionMatcher,
+} from "@/types";
+import { createAccessRequest, type PermitBuilder } from "@/request";
 import { matchCondition } from "@/conditions";
-
-export type ConditionMatcher<A extends Actor = Actor> = (
-	value: unknown,
-	condition: Condition,
-	actor: A,
-) => boolean;
 
 /**
  * Base implementation for rule evaluation. Subclasses can override the
@@ -18,9 +22,9 @@ export abstract class AbstractRuleEngine<
 	C extends Context = Context,
 > {
 	protected constructor(
-		private readonly metaMatcher: MetaMatcher<M, A, Act, C>,
-		private readonly conditionMatcher: ConditionMatcher<A>,
-		private readonly rules?: readonly Rule<M>[],
+		protected readonly metaMatcher: MetaMatcher<M, A, Act, C>,
+		protected readonly conditionMatcher: ConditionMatcher<A>,
+		protected readonly rules?: readonly Rule<M>[],
 	) {}
 
 	/** Determine whether a rule matches the provided actor, action and context. */
@@ -87,6 +91,22 @@ export class RuleEngine<
 		rules?: readonly Rule<M>[],
 	) {
 		super(matchMeta, conditionMatcher, rules);
+	}
+
+	public createRequest<
+		P extends Record<string, unknown> = Record<string, never>,
+	>(
+		actor: A,
+		action: Act,
+		buildPermit?: PermitBuilder<M, A, Act, C, P>,
+	): AccessRequest<M, A, Act, C, Permit & P> {
+		return createAccessRequest(
+			this.rules ?? [],
+			this.metaMatcher,
+			actor,
+			action,
+			buildPermit,
+		);
 	}
 }
 
