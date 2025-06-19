@@ -1,4 +1,5 @@
 import { RuleEngine } from "@/engine";
+import { matchCondition } from "@/conditions";
 /** Utility to check if an actor possesses a role. */
 const hasRole = (actor, role) => {
     if (role === undefined)
@@ -51,25 +52,25 @@ function matchResourceRoleOperationAttribute(meta, actor, action, context) {
 }
 /** Role based engine implementation. */
 export class RoleEngine extends RuleEngine {
-    constructor() {
-        super(matchRole);
+    constructor(rules) {
+        super(matchRole, matchCondition, rules);
     }
 }
 /** Role & operation based engine. */
 export class RoleOperationEngine extends RuleEngine {
-    constructor() {
-        super(matchRoleOperation);
+    constructor(rules) {
+        super(matchRoleOperation, matchCondition, rules);
     }
 }
 /** Resource, role & operation engine. */
 export class ResourceRoleOperationEngine extends RuleEngine {
-    constructor() {
-        super(matchResourceRoleOperation);
+    constructor(rules) {
+        super(matchResourceRoleOperation, matchCondition, rules);
     }
 }
 /** Resource, role, operation & attribute engine. */
 export class ResourceRoleOperationAttributeEngine extends RuleEngine {
-    constructor() {
-        super(matchResourceRoleOperationAttribute);
+    constructor(rules) {
+        super(matchResourceRoleOperationAttribute, matchCondition, rules);
     }
 }

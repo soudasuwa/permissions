@@ -20,6 +20,7 @@ export abstract class AbstractRuleEngine<
 	protected constructor(
 		private readonly metaMatcher: MetaMatcher<M, A, Act, C>,
 		private readonly conditionMatcher: ConditionMatcher<A>,
+		private readonly rules?: readonly Rule<M>[],
 	) {}
 
 	/** Determine whether a rule matches the provided actor, action and context. */
@@ -36,11 +37,11 @@ export abstract class AbstractRuleEngine<
 	}
 
 	/** Recursively evaluate an array of rules. */
-	public checkAccess(
-		rules: readonly Rule<M>[],
+	public permit(
 		actor: A,
 		action: Act,
 		context: C,
+		rules: readonly Rule<M>[] = this.rules ?? [],
 	): boolean {
 		for (const current of rules) {
 			if (this.matchesRule(current, actor, action, context) === false) {
@@ -48,7 +49,7 @@ export abstract class AbstractRuleEngine<
 			}
 			if (
 				current.rules === undefined ||
-				this.checkAccess(current.rules, actor, action, context) === true
+				this.permit(actor, action, context, current.rules) === true
 			) {
 				return true;
 			}
@@ -83,8 +84,9 @@ export class RuleEngine<
 	constructor(
 		matchMeta: MetaMatcher<M, A, Act, C>,
 		conditionMatcher: ConditionMatcher<A> = matchCondition,
+		rules?: readonly Rule<M>[],
 	) {
-		super(matchMeta, conditionMatcher);
+		super(matchMeta, conditionMatcher, rules);
 	}
 }
 
@@ -102,7 +104,7 @@ export const matchesRule = <
 ): boolean =>
 	new RuleEngine(matchMeta).matchesRule(rule, actor, action, context);
 
-export const checkAccess = <
+export const permit = <
 	M extends Record<string, unknown> = Record<string, unknown>,
 	A extends Actor = Actor,
 	Act = string,
@@ -114,4 +116,8 @@ export const checkAccess = <
 	context: C,
 	matchMeta: MetaMatcher<M, A, Act, C>,
 ): boolean =>
-	new RuleEngine(matchMeta).checkAccess(rules, actor, action, context);
+	new RuleEngine(matchMeta, matchCondition, rules).permit(
+		actor,
+		action,
+		context,
+	);

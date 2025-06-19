@@ -21,14 +21,14 @@ describe("RoleEngine", () => {
 	const rules: readonly Rule<{ role?: string }>[] = [
 		{ meta: { role: "admin" } },
 	];
-	const engine = new RoleEngine<RoleActor>();
+	const engine = new RoleEngine<RoleActor>(rules);
 
 	it("allows matching role", () => {
-		expect(engine.checkAccess(rules, actor("admin"), "any", {})).toBe(true);
+		expect(engine.permit(actor("admin"), "any", {})).toBe(true);
 	});
 
 	it("rejects other role", () => {
-		expect(engine.checkAccess(rules, actor("user"), "any", {})).toBe(false);
+		expect(engine.permit(actor("user"), "any", {})).toBe(false);
 	});
 });
 
@@ -37,14 +37,14 @@ describe("RoleOperationEngine", () => {
 	const rules: readonly Rule<{ role?: string; operation?: string }>[] = [
 		{ meta: { role: "admin", operation: "delete" } },
 	];
-	const engine = new RoleOperationEngine<RoleActor, string>();
+	const engine = new RoleOperationEngine<RoleActor, string>(rules);
 
 	it("matches role and operation", () => {
-		expect(engine.checkAccess(rules, actor("admin"), "delete", {})).toBe(true);
+		expect(engine.permit(actor("admin"), "delete", {})).toBe(true);
 	});
 
 	it("fails wrong operation", () => {
-		expect(engine.checkAccess(rules, actor("admin"), "edit", {})).toBe(false);
+		expect(engine.permit(actor("admin"), "edit", {})).toBe(false);
 	});
 });
 
@@ -58,20 +58,20 @@ describe("ResourceRoleOperationEngine", () => {
 		RoleActor,
 		string,
 		{ resource: string }
-	>();
+	>(rules);
 
 	it("matches role, operation and resource", () => {
 		expect(
-			engine.checkAccess(rules, actor("admin"), "edit", {
+			engine.permit(actor("admin"), "edit", {
 				resource: "invoice",
 			}),
 		).toBe(true);
 	});
 
 	it("fails wrong resource", () => {
-		expect(
-			engine.checkAccess(rules, actor("admin"), "edit", { resource: "file" }),
-		).toBe(false);
+		expect(engine.permit(actor("admin"), "edit", { resource: "file" })).toBe(
+			false,
+		);
 	});
 });
 
@@ -97,11 +97,11 @@ describe("ResourceRoleOperationAttributeEngine", () => {
 		RoleActor,
 		string,
 		{ resource: string; userId: string }
-	>();
+	>(rules);
 
 	it("matches attribute reference", () => {
 		expect(
-			engine.checkAccess(rules, actor("user", "42"), "view", {
+			engine.permit(actor("user", "42"), "view", {
 				resource: "invoice",
 				userId: "42",
 			}),
@@ -110,7 +110,7 @@ describe("ResourceRoleOperationAttributeEngine", () => {
 
 	it("fails attribute mismatch", () => {
 		expect(
-			engine.checkAccess(rules, actor("user", "41"), "view", {
+			engine.permit(actor("user", "41"), "view", {
 				resource: "invoice",
 				userId: "42",
 			}),
