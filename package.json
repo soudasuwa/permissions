@@ -4,12 +4,17 @@
 	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"exports": {
+		".": "./dist/index.js",
+		"./guards": "./dist/guards.js"
+	},
 	"scripts": {
 		"test": "bun test",
 		"lint": "bun x @biomejs/biome lint --write",
 		"format": "bun x @biomejs/biome format --write",
 		"build": "bun x tsc"
 	},
+	"workspaces": ["packages/*"],
 	"keywords": ["permissions", "access-control"],
 	"author": "Alessandro Delass <alessandro@delass.ee>",
 	"license": "ISC",

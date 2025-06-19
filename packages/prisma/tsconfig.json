@@ -1,0 +1,14 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"outDir": "dist",
+		"rootDir": "src",
+		"baseUrl": "src",
+		"paths": {
+			"@soudasuwa/permissions": ["../../../src/index"],
+			"@soudasuwa/permissions/*": ["../../../src/*"]
+		}
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["src/**/*.test.ts"]
+}

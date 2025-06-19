@@ -1,3 +1,4 @@
+import { createAccessRequest } from "@/request";
 import { matchCondition } from "@/conditions";
 /**
  * Base implementation for rule evaluation. Subclasses can override the
@@ -42,6 +43,9 @@ export class AbstractRuleEngine {
 export class RuleEngine extends AbstractRuleEngine {
     constructor(matchMeta, conditionMatcher = matchCondition, rules) {
         super(matchMeta, conditionMatcher, rules);
+    }
+    createRequest(actor, action, buildPermit) {
+        return createAccessRequest(this.rules ?? [], this.metaMatcher, actor, action, buildPermit);
     }
 }
 export const matchesRule = (rule, actor, action, context, matchMeta) => new RuleEngine(matchMeta).matchesRule(rule, actor, action, context);

@@ -1,0 +1,13 @@
+{
+	"name": "@soudasuwa/permissions-prisma",
+	"version": "0.1.0",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "bun x tsc"
+	},
+	"dependencies": {
+		"@soudasuwa/permissions": "file:../.."
+	}
+}
