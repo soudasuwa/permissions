@@ -295,7 +295,13 @@ export function createAccessRequest<
 		matchMeta,
 		actor,
 		action,
-		(rs, mm, a, actn, ctx) => {
+		(
+			rs: readonly Rule<M>[],
+			mm: MetaMatcher<M, A, Act, C>,
+			a: A,
+			actn: Act,
+			ctx: C,
+		) => {
 			const where = getWhereClause(rs, mm, a, actn, ctx);
 			const fields = getSelectedFields(rs, mm, a, actn, ctx);
 			return {
