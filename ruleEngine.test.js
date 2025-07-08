@@ -1,6 +1,6 @@
 const assert = require('node:assert');
 const { test } = require('node:test');
-const { evaluateRule } = require('./ruleEngine');
+const { evaluateRule, authorize } = require('./ruleEngine');
 
 // ----------------------------------------
 // Basic Equality
@@ -388,4 +388,21 @@ test('Generating invoice is hidden from customer', () => {
     invoice: { moduleStatus: 'generating' }
   };
   assert.strictEqual(evaluateRule(rule, context), true);
+});
+
+// ----------------------------------------
+// Authorize helper
+// ----------------------------------------
+
+test('authorize matches correct rule', () => {
+  const rules = [
+    { when: { resource: 'todo', action: 'read' }, rule: { 'item.ownerId': { reference: 'user.id' } } },
+    { when: { resource: 'todo', action: 'create' }, rule: { 'user.id': { exists: true } } }
+  ];
+  const context = { resource: 'todo', action: 'read', user: { id: 'a' }, item: { ownerId: 'a' } };
+  assert.strictEqual(authorize(rules, context), true);
+  const createCtx = { resource: 'todo', action: 'create', user: { id: 'a' } };
+  assert.strictEqual(authorize(rules, createCtx), true);
+  const badCtx = { resource: 'todo', action: 'read', user: { id: 'b' }, item: { ownerId: 'a' } };
+  assert.strictEqual(authorize(rules, badCtx), false);
 });

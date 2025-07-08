@@ -70,8 +70,37 @@ function evaluateRule(rule, context) {
     return !evaluateRule(rule.NOT, context);
   }
 
-  const [key, expected] = Object.entries(rule)[0];
+  const entries = Object.entries(rule);
+  if (entries.length > 1) {
+    // Treat multiple key/value pairs as an implicit AND
+    for (const [k, v] of entries) {
+      if (!evaluateRule({ [k]: v }, context)) return false;
+    }
+    return true;
+  }
+
+  const [key, expected] = entries[0];
   return compare(key, expected, context);
 }
+// Determine whether a context is allowed under a rule set.
+// The rule engine does not know or care which attributes are present in the
+// context. Each rule is simply evaluated and if any rule returns true, access
+// is granted.
+// Evaluate a list of rules against a context. Each rule may contain an optional
+// `when` property that itself is a rule evaluated first. If the `when` rule
+// matches, the engine then evaluates the rule's `rule` property. Access is
+// granted if any rule passes. The engine does not expect any specific attribute
+// names in either the rules or the context.
+function authorize(rules, context) {
+  if (!Array.isArray(rules)) return false;
+  return rules.some(r => {
+    if (typeof r !== 'object' || r === null) return false;
+    const when = 'when' in r ? r.when : undefined;
+    const rule = 'rule' in r ? r.rule : undefined;
+    if (when && !evaluateRule(when, context)) return false;
+    if (rule) return evaluateRule(rule, context);
+    return evaluateRule(when, context);
+  });
+}
 
-module.exports = { evaluateRule };
+module.exports = { evaluateRule, authorize };
