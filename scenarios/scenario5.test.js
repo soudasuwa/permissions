@@ -99,6 +99,16 @@ test('scenario5: guest cannot create topic', () => {
   assert.strictEqual(authorize(rules, context), false);
 });
 
+test('scenario5: guest can view public category', () => {
+  const context = {
+    resource: 'category',
+    action: 'view',
+    user: { role: 'guest', id: 'g1' },
+    category: { isPrivate: false }
+  };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
 test('scenario5: member edits own recent post', () => {
   const context = {
     resource: 'post',
@@ -119,12 +129,92 @@ test('scenario5: moderator edits any post in category', () => {
   assert.strictEqual(authorize(rules, context), true);
 });
 
+test('scenario5: moderator cannot edit post outside category', () => {
+  const context = {
+    resource: 'post',
+    action: 'editAnyModerator',
+    user: { role: 'moderator', id: 'mod1' },
+    category: { moderators: ['other'] }
+  };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
 test('scenario5: guest cannot view private category', () => {
   const context = {
     resource: 'category',
     action: 'view',
     user: { role: 'guest', id: 'g1' },
     category: { isPrivate: true, allowedUsers: [] }
+  };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
+test('scenario5: member can create topic in public category', () => {
+  const context = {
+    resource: 'topic',
+    action: 'create',
+    user: { role: 'member', id: 'm1' },
+    category: { isPrivate: false }
+  };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario5: member can create topic in allowed private category', () => {
+  const context = {
+    resource: 'topic',
+    action: 'create',
+    user: { role: 'member', id: 'm1' },
+    category: { isPrivate: true, allowedUsers: ['m1'] }
+  };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario5: member cannot create topic in private category without access', () => {
+  const context = {
+    resource: 'topic',
+    action: 'create',
+    user: { role: 'member', id: 'm1' },
+    category: { isPrivate: true, allowedUsers: ['other'] }
+  };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
+test('scenario5: member cannot edit old post', () => {
+  const context = {
+    resource: 'post',
+    action: 'editOwn',
+    user: { role: 'member', id: 'm1' },
+    post: { authorId: 'm1', ageMinutes: 40 }
+  };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
+test('scenario5: member cannot edit others post even if recent', () => {
+  const context = {
+    resource: 'post',
+    action: 'editOwn',
+    user: { role: 'member', id: 'm1' },
+    post: { authorId: 'm2', ageMinutes: 10 }
+  };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
+test('scenario5: admin can view private category', () => {
+  const context = {
+    resource: 'category',
+    action: 'view',
+    user: { role: 'admin', id: 'a1' },
+    category: { isPrivate: true, allowedUsers: [] }
+  };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario5: non moderator cannot edit any post', () => {
+  const context = {
+    resource: 'post',
+    action: 'editAnyModerator',
+    user: { role: 'member', id: 'm1' },
+    category: { moderators: ['mod1'] }
   };
   assert.strictEqual(authorize(rules, context), false);
 });
