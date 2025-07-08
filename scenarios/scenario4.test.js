@@ -77,10 +77,80 @@ test('scenario4: editor can create note', () => {
   assert.strictEqual(authorize(rules, context), true);
 });
 
+test('scenario4: viewer cannot create note', () => {
+  const context = {
+    resource: 'note',
+    action: 'create',
+    user: { id: 'v1' },
+    notebook: { ownerId: 'o1', viewers: ['v1'] }
+  };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
 test('scenario4: viewer cannot update note', () => {
   const context = {
     resource: 'note',
     action: 'update',
+    user: { id: 'v1' },
+    notebook: { ownerId: 'o1', viewers: ['v1'] }
+  };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
+test('scenario4: owner can update note', () => {
+  const context = {
+    resource: 'note',
+    action: 'update',
+    user: { id: 'o1' },
+    notebook: { ownerId: 'o1' }
+  };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario4: editor can update note', () => {
+  const context = {
+    resource: 'note',
+    action: 'update',
+    user: { id: 'e1' },
+    notebook: { ownerId: 'o1', editors: ['e1'] }
+  };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario4: viewer can read note', () => {
+  const context = {
+    resource: 'note',
+    action: 'read',
+    user: { id: 'v1' },
+    notebook: { ownerId: 'o1', viewers: ['v1'] }
+  };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario4: owner can delete note', () => {
+  const context = {
+    resource: 'note',
+    action: 'delete',
+    user: { id: 'o1' },
+    notebook: { ownerId: 'o1' }
+  };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario4: editor can delete note', () => {
+  const context = {
+    resource: 'note',
+    action: 'delete',
+    user: { id: 'e1' },
+    notebook: { ownerId: 'o1', editors: ['e1'] }
+  };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario4: viewer cannot delete note', () => {
+  const context = {
+    resource: 'note',
+    action: 'delete',
     user: { id: 'v1' },
     notebook: { ownerId: 'o1', viewers: ['v1'] }
   };
@@ -95,4 +165,34 @@ test('scenario4: owner can delete notebook', () => {
     notebook: { ownerId: 'o1' }
   };
   assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario4: non owner cannot delete notebook', () => {
+  const context = {
+    resource: 'notebook',
+    action: 'delete',
+    user: { id: 'e1' },
+    notebook: { ownerId: 'o1', editors: ['e1'] }
+  };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
+test('scenario4: owner can modify sharing', () => {
+  const context = {
+    resource: 'notebook',
+    action: 'modifySharing',
+    user: { id: 'o1' },
+    notebook: { ownerId: 'o1' }
+  };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario4: editor cannot modify sharing', () => {
+  const context = {
+    resource: 'notebook',
+    action: 'modifySharing',
+    user: { id: 'e1' },
+    notebook: { ownerId: 'o1', editors: ['e1'] }
+  };
+  assert.strictEqual(authorize(rules, context), false);
 });

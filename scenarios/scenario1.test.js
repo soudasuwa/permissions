@@ -47,7 +47,42 @@ test('scenario1: user can create own todo', () => {
   assert.strictEqual(authorize(rules, context), true);
 });
 
+test('scenario1: user cannot create todo for another user', () => {
+  const context = { resource: 'todo', action: 'create', user: { id: 'u1' }, item: { ownerId: 'u2' } };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
+test('scenario1: missing user id cannot create', () => {
+  const context = { resource: 'todo', action: 'create', user: {}, item: { ownerId: 'u1' } };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
+test('scenario1: user can read own todo', () => {
+  const context = { resource: 'todo', action: 'read', user: { id: 'u1' }, item: { ownerId: 'u1' } };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
 test('scenario1: user cannot read others todo', () => {
   const context = { resource: 'todo', action: 'read', user: { id: 'u1' }, item: { ownerId: 'u2' } };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
+test('scenario1: user can update own todo', () => {
+  const context = { resource: 'todo', action: 'update', user: { id: 'u1' }, item: { ownerId: 'u1' } };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario1: user cannot update others todo', () => {
+  const context = { resource: 'todo', action: 'update', user: { id: 'u1' }, item: { ownerId: 'u2' } };
+  assert.strictEqual(authorize(rules, context), false);
+});
+
+test('scenario1: user can delete own todo', () => {
+  const context = { resource: 'todo', action: 'delete', user: { id: 'u1' }, item: { ownerId: 'u1' } };
+  assert.strictEqual(authorize(rules, context), true);
+});
+
+test('scenario1: user cannot delete others todo', () => {
+  const context = { resource: 'todo', action: 'delete', user: { id: 'u1' }, item: { ownerId: 'u2' } };
   assert.strictEqual(authorize(rules, context), false);
 });
