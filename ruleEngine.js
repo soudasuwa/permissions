@@ -12,7 +12,11 @@ function compare(attr, expected, context) {
 
   if (typeof expected === 'object' && expected !== null) {
     if ('in' in expected) {
-      return Array.isArray(expected.in) && expected.in.includes(actual);
+      const arr =
+        typeof expected.in === 'object' && expected.in !== null && 'reference' in expected.in
+          ? getValue(expected.in.reference, context)
+          : expected.in;
+      return Array.isArray(arr) && arr.includes(actual);
     }
     if ('not' in expected) {
       return actual !== expected.not;
