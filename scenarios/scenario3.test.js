@@ -11,165 +11,185 @@
    - Moderators may update or reset leaderboard entries and review detailed game history for dispute resolution.
 */
 
-const assert = require('node:assert');
-const { test } = require('node:test');
-const { authorize } = require('../ruleEngine');
+const assert = require("node:assert");
+const { test } = require("node:test");
+const { authorize } = require("../ruleEngine");
 
 const rules = [
-  {
-    when: { resource: 'game', action: 'create' },
-    rule: {
-      AND: [
-        { 'user.role': 'player' },
-        { 'user.id': { in: { reference: 'item.participants' } } }
-      ]
-    }
-  },
-  {
-    when: { resource: 'game', action: 'move' },
-    rule: {
-      AND: [
-        { 'user.id': { in: { reference: 'item.participants' } } },
-        { 'item.status': { not: 'complete' } }
-      ]
-    }
-  },
-  {
-    when: { resource: 'game', action: 'read' },
-    rule: {
-      OR: [
-        { 'item.status': 'complete' },
-        {
-          AND: [
-            { 'user.id': { in: { reference: 'item.participants' } } },
-            { 'item.status': { not: 'complete' } }
-          ]
-        }
-      ]
-    }
-  },
-  {
-    when: { resource: 'leaderboard', action: 'read' },
-    rule: { 'user.role': { in: ['player', 'moderator'] } }
-  },
-  {
-    when: { resource: 'leaderboard', action: 'update' },
-    rule: { 'user.role': 'moderator' }
-  }
+	{
+		when: { resource: "game", action: "create" },
+		rule: {
+			AND: [
+				{ "user.role": "player" },
+				{ "user.id": { in: { reference: "item.participants" } } },
+			],
+		},
+	},
+	{
+		when: { resource: "game", action: "move" },
+		rule: {
+			AND: [
+				{ "user.id": { in: { reference: "item.participants" } } },
+				{ "item.status": { not: "complete" } },
+			],
+		},
+	},
+	{
+		when: { resource: "game", action: "read" },
+		rule: {
+			OR: [
+				{ "item.status": "complete" },
+				{
+					AND: [
+						{ "user.id": { in: { reference: "item.participants" } } },
+						{ "item.status": { not: "complete" } },
+					],
+				},
+			],
+		},
+	},
+	{
+		when: { resource: "leaderboard", action: "read" },
+		rule: { "user.role": { in: ["player", "moderator"] } },
+	},
+	{
+		when: { resource: "leaderboard", action: "update" },
+		rule: { "user.role": "moderator" },
+	},
 ];
 
 module.exports = { rules };
 
 // Tests
 
-test('scenario3: participant can move in active game', () => {
-  const context = {
-    resource: 'game',
-    action: 'move',
-    user: { id: 'p1', role: 'player' },
-    item: { participants: ['p1', 'p2'], status: 'active' }
-  };
-  assert.strictEqual(authorize(rules, context), true);
+test("scenario3: participant can move in active game", () => {
+	const context = {
+		resource: "game",
+		action: "move",
+		user: { id: "p1", role: "player" },
+		item: { participants: ["p1", "p2"], status: "active" },
+	};
+	assert.strictEqual(authorize(rules, context), true);
 });
 
-test('scenario3: player can create game when included', () => {
-  const context = {
-    resource: 'game',
-    action: 'create',
-    user: { id: 'p1', role: 'player' },
-    item: { participants: ['p1', 'p2'] }
-  };
-  assert.strictEqual(authorize(rules, context), true);
+test("scenario3: player can create game when included", () => {
+	const context = {
+		resource: "game",
+		action: "create",
+		user: { id: "p1", role: "player" },
+		item: { participants: ["p1", "p2"] },
+	};
+	assert.strictEqual(authorize(rules, context), true);
 });
 
-test('scenario3: creation fails when not a participant', () => {
-  const context = {
-    resource: 'game',
-    action: 'create',
-    user: { id: 'x', role: 'player' },
-    item: { participants: ['p1', 'p2'] }
-  };
-  assert.strictEqual(authorize(rules, context), false);
+test("scenario3: creation fails when not a participant", () => {
+	const context = {
+		resource: "game",
+		action: "create",
+		user: { id: "x", role: "player" },
+		item: { participants: ["p1", "p2"] },
+	};
+	assert.strictEqual(authorize(rules, context), false);
 });
 
-test('scenario3: creation fails for non player role', () => {
-  const context = {
-    resource: 'game',
-    action: 'create',
-    user: { id: 'p1', role: 'moderator' },
-    item: { participants: ['p1', 'p2'] }
-  };
-  assert.strictEqual(authorize(rules, context), false);
+test("scenario3: creation fails for non player role", () => {
+	const context = {
+		resource: "game",
+		action: "create",
+		user: { id: "p1", role: "moderator" },
+		item: { participants: ["p1", "p2"] },
+	};
+	assert.strictEqual(authorize(rules, context), false);
 });
 
-test('scenario3: non participant cannot move', () => {
-  const context = {
-    resource: 'game',
-    action: 'move',
-    user: { id: 'x', role: 'player' },
-    item: { participants: ['p1', 'p2'], status: 'active' }
-  };
-  assert.strictEqual(authorize(rules, context), false);
+test("scenario3: non participant cannot move", () => {
+	const context = {
+		resource: "game",
+		action: "move",
+		user: { id: "x", role: "player" },
+		item: { participants: ["p1", "p2"], status: "active" },
+	};
+	assert.strictEqual(authorize(rules, context), false);
 });
 
-test('scenario3: participant cannot move when game complete', () => {
-  const context = {
-    resource: 'game',
-    action: 'move',
-    user: { id: 'p1', role: 'player' },
-    item: { participants: ['p1', 'p2'], status: 'complete' }
-  };
-  assert.strictEqual(authorize(rules, context), false);
+test("scenario3: participant cannot move when game complete", () => {
+	const context = {
+		resource: "game",
+		action: "move",
+		user: { id: "p1", role: "player" },
+		item: { participants: ["p1", "p2"], status: "complete" },
+	};
+	assert.strictEqual(authorize(rules, context), false);
 });
 
-test('scenario3: only moderator updates leaderboard', () => {
-  const context = { resource: 'leaderboard', action: 'update', user: { role: 'player' } };
-  assert.strictEqual(authorize(rules, context), false);
-  const modCtx = { resource: 'leaderboard', action: 'update', user: { role: 'moderator' } };
-  assert.strictEqual(authorize(rules, modCtx), true);
+test("scenario3: only moderator updates leaderboard", () => {
+	const context = {
+		resource: "leaderboard",
+		action: "update",
+		user: { role: "player" },
+	};
+	assert.strictEqual(authorize(rules, context), false);
+	const modCtx = {
+		resource: "leaderboard",
+		action: "update",
+		user: { role: "moderator" },
+	};
+	assert.strictEqual(authorize(rules, modCtx), true);
 });
 
-test('scenario3: player can read completed game', () => {
-  const context = {
-    resource: 'game',
-    action: 'read',
-    user: { id: 'x', role: 'player' },
-    item: { status: 'complete' }
-  };
-  assert.strictEqual(authorize(rules, context), true);
+test("scenario3: player can read completed game", () => {
+	const context = {
+		resource: "game",
+		action: "read",
+		user: { id: "x", role: "player" },
+		item: { status: "complete" },
+	};
+	assert.strictEqual(authorize(rules, context), true);
 });
 
-test('scenario3: participant can read active game', () => {
-  const context = {
-    resource: 'game',
-    action: 'read',
-    user: { id: 'p1', role: 'player' },
-    item: { participants: ['p1', 'p2'], status: 'active' }
-  };
-  assert.strictEqual(authorize(rules, context), true);
+test("scenario3: participant can read active game", () => {
+	const context = {
+		resource: "game",
+		action: "read",
+		user: { id: "p1", role: "player" },
+		item: { participants: ["p1", "p2"], status: "active" },
+	};
+	assert.strictEqual(authorize(rules, context), true);
 });
 
-test('scenario3: non participant cannot read active game', () => {
-  const context = {
-    resource: 'game',
-    action: 'read',
-    user: { id: 'x', role: 'player' },
-    item: { participants: ['p1', 'p2'], status: 'active' }
-  };
-  assert.strictEqual(authorize(rules, context), false);
+test("scenario3: non participant cannot read active game", () => {
+	const context = {
+		resource: "game",
+		action: "read",
+		user: { id: "x", role: "player" },
+		item: { participants: ["p1", "p2"], status: "active" },
+	};
+	assert.strictEqual(authorize(rules, context), false);
 });
 
-test('scenario3: player can read leaderboard', () => {
-  const context = { resource: 'leaderboard', action: 'read', user: { role: 'player' } };
-  assert.strictEqual(authorize(rules, context), true);
+test("scenario3: player can read leaderboard", () => {
+	const context = {
+		resource: "leaderboard",
+		action: "read",
+		user: { role: "player" },
+	};
+	assert.strictEqual(authorize(rules, context), true);
 });
 
-test('scenario3: guest cannot read leaderboard', () => {
-  const context = { resource: 'leaderboard', action: 'read', user: { role: 'guest' } };
-  assert.strictEqual(authorize(rules, context), false);
+test("scenario3: guest cannot read leaderboard", () => {
+	const context = {
+		resource: "leaderboard",
+		action: "read",
+		user: { role: "guest" },
+	};
+	assert.strictEqual(authorize(rules, context), false);
 });
 
-test('scenario3: player cannot update leaderboard', () => {
-  const context = { resource: 'leaderboard', action: 'update', user: { role: 'player' } };
-  assert.strictEqual(authorize(rules, context), false);
+test("scenario3: player cannot update leaderboard", () => {
+	const context = {
+		resource: "leaderboard",
+		action: "update",
+		user: { role: "player" },
+	};
+	assert.strictEqual(authorize(rules, context), false);
 });

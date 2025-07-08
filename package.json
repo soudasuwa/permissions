@@ -1,8 +1,14 @@
 {
-  "name": "rule-evaluator",
-  "version": "1.0.0",
-  "type": "commonjs",
-  "scripts": {
-    "test": "node --test"
-  }
+	"name": "rule-evaluator",
+	"version": "1.0.0",
+	"type": "commonjs",
+	"scripts": {
+		"test": "node --test",
+		"format": "npx @biomejs/biome format --write",
+		"lint": "npx @biomejs/biome lint --write",
+		"check": "npx @biomejs/biome check --write"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.1.1"
+	}
 }
