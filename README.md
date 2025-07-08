@@ -8,7 +8,7 @@ This project demonstrates a small access control rule engine written in Node.js.
 - **Comparison operators** – equality, `in`, `not`, value `reference`, numeric comparison (`greaterThan`, `lessThan`) and `exists` checks.
 - **Logical composition** – combine rules with `AND`, `OR` and `NOT` blocks or use arrays/multiple keys for implicit `AND` behaviour.
 - **Authorize helper** – evaluate an array of rule objects. Each rule can include an optional `when` clause that must match before its main rule is evaluated.
-- **Realistic scenarios** – `scenarioRules.js` contains example rule sets for common applications (todo apps, collaborative notes, forums and more).
+- **Realistic scenarios** – see the `scenarios/` folder for example rule sets (todo apps, collaborative notes, forums and more).
 
 ## Testing
 
