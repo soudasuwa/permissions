@@ -33,7 +33,7 @@
 
 const assert = require("node:assert");
 const { test } = require("node:test");
-const { authorize } = require("../ruleEngine");
+const { AccessController } = require("../AccessController");
 
 const rules = [
 	{
@@ -113,143 +113,136 @@ const rules = [
 
 module.exports = { rules };
 
+const baseCategory = new AccessController(rules).context({
+	resource: "category",
+});
+const baseTopic = new AccessController(rules).context({ resource: "topic" });
+const basePost = new AccessController(rules).context({ resource: "post" });
+const baseUser = new AccessController(rules).context({ resource: "user" });
+
 // Tests
 
 test("scenario5: guest cannot create topic", () => {
-	const context = {
-		resource: "topic",
+	const controller = baseTopic.context({
 		action: "create",
 		user: { role: "guest", id: "g1" },
 		category: { isPrivate: false },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario5: guest can view public category", () => {
-	const context = {
-		resource: "category",
+	const controller = baseCategory.context({
 		action: "view",
 		user: { role: "guest", id: "g1" },
 		category: { isPrivate: false },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario5: member edits own recent post", () => {
-	const context = {
-		resource: "post",
+	const controller = basePost.context({
 		action: "editOwn",
 		user: { role: "member", id: "m1" },
 		post: { authorId: "m1", ageMinutes: 10 },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario5: moderator edits any post in category", () => {
-	const context = {
-		resource: "post",
+	const controller = basePost.context({
 		action: "editAnyModerator",
 		user: { role: "moderator", id: "mod1" },
 		category: { moderators: ["mod1"] },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario5: moderator cannot edit post outside category", () => {
-	const context = {
-		resource: "post",
+	const controller = basePost.context({
 		action: "editAnyModerator",
 		user: { role: "moderator", id: "mod1" },
 		category: { moderators: ["other"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario5: guest cannot view private category", () => {
-	const context = {
-		resource: "category",
+	const controller = baseCategory.context({
 		action: "view",
 		user: { role: "guest", id: "g1" },
 		category: { isPrivate: true, allowedUsers: [] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario5: member can create topic in public category", () => {
-	const context = {
-		resource: "topic",
+	const controller = baseTopic.context({
 		action: "create",
 		user: { role: "member", id: "m1" },
 		category: { isPrivate: false },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario5: member can create topic in allowed private category", () => {
-	const context = {
-		resource: "topic",
+	const controller = baseTopic.context({
 		action: "create",
 		user: { role: "member", id: "m1" },
 		category: { isPrivate: true, allowedUsers: ["m1"] },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario5: member cannot create topic in private category without access", () => {
-	const context = {
-		resource: "topic",
+	const controller = baseTopic.context({
 		action: "create",
 		user: { role: "member", id: "m1" },
 		category: { isPrivate: true, allowedUsers: ["other"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario5: member cannot edit old post", () => {
-	const context = {
-		resource: "post",
+	const controller = basePost.context({
 		action: "editOwn",
 		user: { role: "member", id: "m1" },
 		post: { authorId: "m1", ageMinutes: 40 },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario5: member cannot edit others post even if recent", () => {
-	const context = {
-		resource: "post",
+	const controller = basePost.context({
 		action: "editOwn",
 		user: { role: "member", id: "m1" },
 		post: { authorId: "m2", ageMinutes: 10 },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario5: admin can view private category", () => {
-	const context = {
-		resource: "category",
+	const controller = baseCategory.context({
 		action: "view",
 		user: { role: "admin", id: "a1" },
 		category: { isPrivate: true, allowedUsers: [] },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario5: non moderator cannot edit any post", () => {
-	const context = {
-		resource: "post",
+	const controller = basePost.context({
 		action: "editAnyModerator",
 		user: { role: "member", id: "m1" },
 		category: { moderators: ["mod1"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario5: admin can delete user account", () => {
-	const context = {
-		resource: "user",
+	const controller = baseUser.context({
 		action: "adminDelete",
 		user: { role: "admin" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });

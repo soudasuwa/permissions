@@ -1,6 +1,6 @@
 const assert = require("node:assert");
 const { test } = require("node:test");
-const { authorize } = require("../ruleEngine");
+const { AccessController } = require("../AccessController");
 
 /* Scenario 6: Invoice Lifecycle Rules
    Roles: admin, customer
@@ -62,41 +62,39 @@ const rules = [
 
 module.exports = { rules };
 
+const base = new AccessController(rules).context({ resource: "invoice" });
+
 // Tests
 
 test("scenario6: admin can edit draft invoice", () => {
-	const context = {
-		resource: "invoice",
+	const controller = base.context({
 		action: "edit",
 		user: { role: "admin" },
 		invoice: { moduleStatus: "done", adminStatus: "draft" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario6: admin cannot edit when module generating", () => {
-	const context = {
-		resource: "invoice",
+	const controller = base.context({
 		action: "edit",
 		user: { role: "admin" },
 		invoice: { moduleStatus: "generating", adminStatus: "draft" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario6: admin cannot edit completed invoice", () => {
-	const context = {
-		resource: "invoice",
+	const controller = base.context({
 		action: "edit",
 		user: { role: "admin" },
 		invoice: { moduleStatus: "done", adminStatus: "complete" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario6: customer can pay own pending invoice", () => {
-	const context = {
-		resource: "invoice",
+	const controller = base.context({
 		action: "pay",
 		user: { role: "customer", id: "c1" },
 		invoice: {
@@ -105,13 +103,12 @@ test("scenario6: customer can pay own pending invoice", () => {
 			adminStatus: "pending",
 			customerStatus: "pending",
 		},
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario6: customer cannot pay completed invoice", () => {
-	const context = {
-		resource: "invoice",
+	const controller = base.context({
 		action: "pay",
 		user: { role: "customer", id: "c1" },
 		invoice: {
@@ -120,13 +117,12 @@ test("scenario6: customer cannot pay completed invoice", () => {
 			adminStatus: "complete",
 			customerStatus: "complete",
 		},
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario6: customer cannot pay someone else invoice", () => {
-	const context = {
-		resource: "invoice",
+	const controller = base.context({
 		action: "pay",
 		user: { role: "customer", id: "c1" },
 		invoice: {
@@ -135,23 +131,21 @@ test("scenario6: customer cannot pay someone else invoice", () => {
 			adminStatus: "pending",
 			customerStatus: "pending",
 		},
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario6: customer cannot view invoice while generating", () => {
-	const context = {
-		resource: "invoice",
+	const controller = base.context({
 		action: "view",
 		user: { role: "customer", id: "c1" },
 		invoice: { ownerId: "c1", moduleStatus: "generating" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario6: customer can view invoice when done", () => {
-	const context = {
-		resource: "invoice",
+	const controller = base.context({
 		action: "view",
 		user: { role: "customer", id: "c1" },
 		invoice: {
@@ -160,6 +154,6 @@ test("scenario6: customer can view invoice when done", () => {
 			adminStatus: "pending",
 			customerStatus: "pending",
 		},
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });

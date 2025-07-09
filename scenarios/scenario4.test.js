@@ -13,7 +13,7 @@
 
 const assert = require("node:assert");
 const { test } = require("node:test");
-const { authorize } = require("../ruleEngine");
+const { AccessController } = require("../AccessController");
 
 const rules = [
 	{
@@ -95,134 +95,124 @@ const rules = [
 
 module.exports = { rules };
 
+const baseNote = new AccessController(rules).context({ resource: "note" });
+const baseBook = new AccessController(rules).context({ resource: "notebook" });
+
 // Tests
 
 test("scenario4: editor can create note", () => {
-	const context = {
-		resource: "note",
+	const controller = baseNote.context({
 		action: "create",
 		user: { id: "e1" },
 		notebook: { ownerId: "o1", editors: ["e1"] },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario4: viewer cannot create note", () => {
-	const context = {
-		resource: "note",
+	const controller = baseNote.context({
 		action: "create",
 		user: { id: "v1" },
 		notebook: { ownerId: "o1", viewers: ["v1"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario4: viewer cannot update note", () => {
-	const context = {
-		resource: "note",
+	const controller = baseNote.context({
 		action: "update",
 		user: { id: "v1" },
 		notebook: { ownerId: "o1", viewers: ["v1"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario4: owner can update note", () => {
-	const context = {
-		resource: "note",
+	const controller = baseNote.context({
 		action: "update",
 		user: { id: "o1" },
 		notebook: { ownerId: "o1" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario4: editor can update note", () => {
-	const context = {
-		resource: "note",
+	const controller = baseNote.context({
 		action: "update",
 		user: { id: "e1" },
 		notebook: { ownerId: "o1", editors: ["e1"] },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario4: viewer can read note", () => {
-	const context = {
-		resource: "note",
+	const controller = baseNote.context({
 		action: "read",
 		user: { id: "v1" },
 		notebook: { ownerId: "o1", viewers: ["v1"] },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario4: owner can delete note", () => {
-	const context = {
-		resource: "note",
+	const controller = baseNote.context({
 		action: "delete",
 		user: { id: "o1" },
 		notebook: { ownerId: "o1" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario4: editor can delete note", () => {
-	const context = {
-		resource: "note",
+	const controller = baseNote.context({
 		action: "delete",
 		user: { id: "e1" },
 		notebook: { ownerId: "o1", editors: ["e1"] },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario4: viewer cannot delete note", () => {
-	const context = {
-		resource: "note",
+	const controller = baseNote.context({
 		action: "delete",
 		user: { id: "v1" },
 		notebook: { ownerId: "o1", viewers: ["v1"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario4: owner can delete notebook", () => {
-	const context = {
-		resource: "notebook",
+	const controller = baseBook.context({
 		action: "delete",
 		user: { id: "o1" },
 		notebook: { ownerId: "o1" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario4: non owner cannot delete notebook", () => {
-	const context = {
-		resource: "notebook",
+	const controller = baseBook.context({
 		action: "delete",
 		user: { id: "e1" },
 		notebook: { ownerId: "o1", editors: ["e1"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario4: owner can modify sharing", () => {
-	const context = {
-		resource: "notebook",
+	const controller = baseBook.context({
 		action: "modifySharing",
 		user: { id: "o1" },
 		notebook: { ownerId: "o1" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario4: editor cannot modify sharing", () => {
-	const context = {
-		resource: "notebook",
+	const controller = baseBook.context({
 		action: "modifySharing",
 		user: { id: "e1" },
 		notebook: { ownerId: "o1", editors: ["e1"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
