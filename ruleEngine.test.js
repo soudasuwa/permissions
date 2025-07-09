@@ -66,6 +66,18 @@ test("OR match (one true)", () => {
 	assert.strictEqual(evaluateRule(rule, context), true);
 });
 
+test("OR object syntax works", () => {
+	const rule = {
+		OR: { "user.role": "admin", "resource.status": "draft" },
+	};
+	const adminCtx = { user: { role: "admin" }, resource: { status: "pending" } };
+	const draftCtx = { user: { role: "user" }, resource: { status: "draft" } };
+	const noneCtx = { user: { role: "user" }, resource: { status: "pending" } };
+	assert.strictEqual(evaluateRule(rule, adminCtx), true);
+	assert.strictEqual(evaluateRule(rule, draftCtx), true);
+	assert.strictEqual(evaluateRule(rule, noneCtx), false);
+});
+
 test("object with multiple keys is implicit AND", () => {
 	const rule = { "user.role": "admin", "resource.status": "draft" };
 	const context = {

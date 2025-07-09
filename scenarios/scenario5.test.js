@@ -42,15 +42,13 @@ const rules = [
 			{
 				when: { action: "view" },
 				rule: {
-					OR: [
-						{ "category.isPrivate": { not: true } },
-						{
-							"user.id": {
-								in: { reference: "category.allowedUsers" },
-							},
+					OR: {
+						"category.isPrivate": { not: true },
+						"user.id": {
+							in: { reference: "category.allowedUsers" },
 						},
-						{ "user.role": "admin" },
-					],
+						"user.role": "admin",
+					},
 				},
 			},
 		],
