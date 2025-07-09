@@ -11,6 +11,7 @@ This project demonstrates a small access control rule engine written in Node.js.
 - **Nested rule groups** – rule objects may contain a `rules` array to share a `when` condition with multiple child rules.
 - **Nested attribute paths** – objects can be nested within a rule to group common path prefixes.
 - **Realistic scenarios** – see the `scenarios/` folder for example rule sets (todo apps, collaborative notes, forums and more).
+- **AccessController** – helper class for incrementally building a context and checking access using the rule engine.
 
 ## Testing
 
