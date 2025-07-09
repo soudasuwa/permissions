@@ -22,10 +22,10 @@ const rules = [
 		rules: [
 			{
 				when: { action: "create" },
-				rule: [
-					{ "user.id": { exists: true } },
-					{ "item.ownerId": { reference: "user.id" } },
-				],
+				rule: {
+					user: { id: { exists: true } },
+					item: { ownerId: { reference: "user.id" } },
+				},
 			},
 			{
 				when: { action: "read" },
