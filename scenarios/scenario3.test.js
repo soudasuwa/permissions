@@ -13,7 +13,7 @@
 
 const assert = require("node:assert");
 const { test } = require("node:test");
-const { authorize } = require("../ruleEngine");
+const { AccessController } = require("../AccessController");
 
 const rules = [
 	{
@@ -74,136 +74,127 @@ const rules = [
 
 module.exports = { rules };
 
+const baseGame = new AccessController(rules).context({ resource: "game" });
+const baseBoard = new AccessController(rules).context({
+	resource: "leaderboard",
+});
+
 // Tests
 
 test("scenario3: participant can move in active game", () => {
-	const context = {
-		resource: "game",
+	const controller = baseGame.context({
 		action: "move",
 		user: { id: "p1", role: "player" },
 		item: { participants: ["p1", "p2"], status: "active" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario3: player can create game when included", () => {
-	const context = {
-		resource: "game",
+	const controller = baseGame.context({
 		action: "create",
 		user: { id: "p1", role: "player" },
 		item: { participants: ["p1", "p2"] },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario3: creation fails when not a participant", () => {
-	const context = {
-		resource: "game",
+	const controller = baseGame.context({
 		action: "create",
 		user: { id: "x", role: "player" },
 		item: { participants: ["p1", "p2"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario3: creation fails for non player role", () => {
-	const context = {
-		resource: "game",
+	const controller = baseGame.context({
 		action: "create",
 		user: { id: "p1", role: "moderator" },
 		item: { participants: ["p1", "p2"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario3: non participant cannot move", () => {
-	const context = {
-		resource: "game",
+	const controller = baseGame.context({
 		action: "move",
 		user: { id: "x", role: "player" },
 		item: { participants: ["p1", "p2"], status: "active" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario3: participant cannot move when game complete", () => {
-	const context = {
-		resource: "game",
+	const controller = baseGame.context({
 		action: "move",
 		user: { id: "p1", role: "player" },
 		item: { participants: ["p1", "p2"], status: "complete" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario3: only moderator updates leaderboard", () => {
-	const context = {
-		resource: "leaderboard",
+	const controller = baseBoard.context({
 		action: "update",
 		user: { role: "player" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
-	const modCtx = {
-		resource: "leaderboard",
+	});
+	assert.strictEqual(controller.check(), false);
+	const mod = baseBoard.context({
 		action: "update",
 		user: { role: "moderator" },
-	};
-	assert.strictEqual(authorize(rules, modCtx), true);
+	});
+	assert.strictEqual(mod.check(), true);
 });
 
 test("scenario3: player can read completed game", () => {
-	const context = {
-		resource: "game",
+	const controller = baseGame.context({
 		action: "read",
 		user: { id: "x", role: "player" },
 		item: { status: "complete" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario3: participant can read active game", () => {
-	const context = {
-		resource: "game",
+	const controller = baseGame.context({
 		action: "read",
 		user: { id: "p1", role: "player" },
 		item: { participants: ["p1", "p2"], status: "active" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario3: non participant cannot read active game", () => {
-	const context = {
-		resource: "game",
+	const controller = baseGame.context({
 		action: "read",
 		user: { id: "x", role: "player" },
 		item: { participants: ["p1", "p2"], status: "active" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario3: player can read leaderboard", () => {
-	const context = {
-		resource: "leaderboard",
+	const controller = baseBoard.context({
 		action: "read",
 		user: { role: "player" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario3: guest cannot read leaderboard", () => {
-	const context = {
-		resource: "leaderboard",
+	const controller = baseBoard.context({
 		action: "read",
 		user: { role: "guest" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario3: player cannot update leaderboard", () => {
-	const context = {
-		resource: "leaderboard",
+	const controller = baseBoard.context({
 		action: "update",
 		user: { role: "player" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });

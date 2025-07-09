@@ -12,7 +12,7 @@
 
 const assert = require("node:assert");
 const { test } = require("node:test");
-const { authorize } = require("../ruleEngine");
+const { AccessController } = require("../AccessController");
 
 const rules = [
 	{
@@ -43,94 +43,87 @@ const rules = [
 
 module.exports = { rules };
 
+const base = new AccessController(rules).context({ resource: "todo" });
+
 // Tests
 
 test("scenario1: user can create own todo", () => {
-	const context = {
-		resource: "todo",
+	const controller = base.context({
 		action: "create",
 		user: { id: "u1" },
 		item: { ownerId: "u1" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario1: user cannot create todo for another user", () => {
-	const context = {
-		resource: "todo",
+	const controller = base.context({
 		action: "create",
 		user: { id: "u1" },
 		item: { ownerId: "u2" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario1: missing user id cannot create", () => {
-	const context = {
-		resource: "todo",
+	const controller = base.context({
 		action: "create",
 		user: {},
 		item: { ownerId: "u1" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario1: user can read own todo", () => {
-	const context = {
-		resource: "todo",
+	const controller = base.context({
 		action: "read",
 		user: { id: "u1" },
 		item: { ownerId: "u1" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario1: user cannot read others todo", () => {
-	const context = {
-		resource: "todo",
+	const controller = base.context({
 		action: "read",
 		user: { id: "u1" },
 		item: { ownerId: "u2" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario1: user can update own todo", () => {
-	const context = {
-		resource: "todo",
+	const controller = base.context({
 		action: "update",
 		user: { id: "u1" },
 		item: { ownerId: "u1" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario1: user cannot update others todo", () => {
-	const context = {
-		resource: "todo",
+	const controller = base.context({
 		action: "update",
 		user: { id: "u1" },
 		item: { ownerId: "u2" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario1: user can delete own todo", () => {
-	const context = {
-		resource: "todo",
+	const controller = base.context({
 		action: "delete",
 		user: { id: "u1" },
 		item: { ownerId: "u1" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario1: user cannot delete others todo", () => {
-	const context = {
-		resource: "todo",
+	const controller = base.context({
 		action: "delete",
 		user: { id: "u1" },
 		item: { ownerId: "u2" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });

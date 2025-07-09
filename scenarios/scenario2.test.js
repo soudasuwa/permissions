@@ -14,7 +14,7 @@
 
 const assert = require("node:assert");
 const { test } = require("node:test");
-const { authorize } = require("../ruleEngine");
+const { AccessController } = require("../AccessController");
 
 const rules = [
 	{
@@ -63,104 +63,96 @@ const rules = [
 
 module.exports = { rules };
 
+const base = new AccessController(rules).context({ resource: "task" });
+
 // Tests
 
 test("scenario2: shared friend can update task", () => {
-	const context = {
-		resource: "task",
+	const controller = base.context({
 		action: "update",
 		user: { id: "bob" },
 		item: { ownerId: "alice", sharedWith: ["bob"] },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario2: owner can create task", () => {
-	const context = {
-		resource: "task",
+	const controller = base.context({
 		action: "create",
 		user: { id: "alice" },
 		item: { ownerId: "alice" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario2: cannot create task for another user", () => {
-	const context = {
-		resource: "task",
+	const controller = base.context({
 		action: "create",
 		user: { id: "alice" },
 		item: { ownerId: "bob" },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario2: owner can read task", () => {
-	const context = {
-		resource: "task",
+	const controller = base.context({
 		action: "read",
 		user: { id: "alice" },
 		item: { ownerId: "alice" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario2: shared friend can read task", () => {
-	const context = {
-		resource: "task",
+	const controller = base.context({
 		action: "read",
 		user: { id: "bob" },
 		item: { ownerId: "alice", sharedWith: ["bob"] },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario2: unshared user cannot read task", () => {
-	const context = {
-		resource: "task",
+	const controller = base.context({
 		action: "read",
 		user: { id: "charlie" },
 		item: { ownerId: "alice", sharedWith: ["bob"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario2: owner can update task", () => {
-	const context = {
-		resource: "task",
+	const controller = base.context({
 		action: "update",
 		user: { id: "alice" },
 		item: { ownerId: "alice" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario2: unshared user cannot update task", () => {
-	const context = {
-		resource: "task",
+	const controller = base.context({
 		action: "update",
 		user: { id: "charlie" },
 		item: { ownerId: "alice", sharedWith: ["bob"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
 
 test("scenario2: owner can delete task", () => {
-	const context = {
-		resource: "task",
+	const controller = base.context({
 		action: "delete",
 		user: { id: "alice" },
 		item: { ownerId: "alice" },
-	};
-	assert.strictEqual(authorize(rules, context), true);
+	});
+	assert.strictEqual(controller.check(), true);
 });
 
 test("scenario2: shared friend cannot delete task", () => {
-	const context = {
-		resource: "task",
+	const controller = base.context({
 		action: "delete",
 		user: { id: "bob" },
 		item: { ownerId: "alice", sharedWith: ["bob"] },
-	};
-	assert.strictEqual(authorize(rules, context), false);
+	});
+	assert.strictEqual(controller.check(), false);
 });
