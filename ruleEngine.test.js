@@ -66,6 +66,31 @@ test("OR match (one true)", () => {
 	assert.strictEqual(evaluateRule(rule, context), true);
 });
 
+test("Array is implicit AND", () => {
+	const rule = [{ "user.role": "admin" }, { "resource.status": "draft" }];
+	const context = { user: { role: "admin" }, resource: { status: "draft" } };
+	assert.strictEqual(evaluateRule(rule, context), true);
+});
+
+test("nested object expands path", () => {
+	const rule = {
+		invoice: {
+			ownerId: { reference: "user.id" },
+			status: { not: "paid" },
+		},
+	};
+	const ctx = {
+		user: { id: "u1" },
+		invoice: { ownerId: "u1", status: "pending" },
+	};
+	const badCtx = {
+		user: { id: "u1" },
+		invoice: { ownerId: "u2", status: "pending" },
+	};
+	assert.strictEqual(evaluateRule(rule, ctx), true);
+	assert.strictEqual(evaluateRule(rule, badCtx), false);
+});
+
 // ----------------------------------------
 // Nested and NOT logic
 // ----------------------------------------
@@ -117,4 +142,51 @@ test("authorize matches correct rule", () => {
 		item: { ownerId: "a" },
 	};
 	assert.strictEqual(authorize(rules, badCtx), false);
+});
+
+test("authorize handles nested rule groups", () => {
+	const rules = [
+		{
+			when: { resource: "notebook" },
+			rules: [
+				{
+					when: { action: "delete" },
+					rule: {
+						"notebook.ownerId": {
+							reference: "user.id",
+						},
+					},
+				},
+				{
+					when: { action: "modifySharing" },
+					rule: {
+						"notebook.ownerId": {
+							reference: "user.id",
+						},
+					},
+				},
+			],
+		},
+	];
+	const ctxDelete = {
+		resource: "notebook",
+		action: "delete",
+		user: { id: "a" },
+		notebook: { ownerId: "a" },
+	};
+	const ctxShare = {
+		resource: "notebook",
+		action: "modifySharing",
+		user: { id: "a" },
+		notebook: { ownerId: "a" },
+	};
+	const ctxBad = {
+		resource: "notebook",
+		action: "delete",
+		user: { id: "b" },
+		notebook: { ownerId: "a" },
+	};
+	assert.strictEqual(authorize(rules, ctxDelete), true);
+	assert.strictEqual(authorize(rules, ctxShare), true);
+	assert.strictEqual(authorize(rules, ctxBad), false);
 });

@@ -37,47 +37,68 @@ const { authorize } = require("../ruleEngine");
 
 const rules = [
 	{
-		when: { resource: "category", action: "view" },
-		rule: {
-			OR: [
-				{ "category.isPrivate": { not: true } },
-				{ "user.id": { in: { reference: "category.allowedUsers" } } },
-				{ "user.role": "admin" },
-			],
-		},
-	},
-	{
-		when: { resource: "topic", action: "create" },
-		rule: {
-			AND: [
-				{ "user.role": "member" },
-				{
+		when: { resource: "category" },
+		rules: [
+			{
+				when: { action: "view" },
+				rule: {
 					OR: [
 						{ "category.isPrivate": { not: true } },
-						{ "user.id": { in: { reference: "category.allowedUsers" } } },
+						{
+							"user.id": {
+								in: { reference: "category.allowedUsers" },
+							},
+						},
+						{ "user.role": "admin" },
 					],
 				},
-			],
-		},
+			},
+		],
 	},
 	{
-		when: { resource: "post", action: "editOwn" },
-		rule: {
-			AND: [
-				{ "user.role": "member" },
-				{ "post.authorId": { reference: "user.id" } },
-				{ "post.ageMinutes": { lessThan: 30 } },
-			],
-		},
+		when: { resource: "topic" },
+		rules: [
+			{
+				when: { action: "create" },
+				rule: [
+					{ "user.role": "member" },
+					{
+						OR: [
+							{ "category.isPrivate": { not: true } },
+							{
+								"user.id": {
+									in: { reference: "category.allowedUsers" },
+								},
+							},
+						],
+					},
+				],
+			},
+		],
 	},
 	{
-		when: { resource: "post", action: "editAnyModerator" },
-		rule: {
-			AND: [
-				{ "user.role": "moderator" },
-				{ "user.id": { in: { reference: "category.moderators" } } },
-			],
-		},
+		when: { resource: "post" },
+		rules: [
+			{
+				when: { action: "editOwn" },
+				rule: [
+					{ "user.role": "member" },
+					{ "post.authorId": { reference: "user.id" } },
+					{ "post.ageMinutes": { lessThan: 30 } },
+				],
+			},
+			{
+				when: { action: "editAnyModerator" },
+				rule: [
+					{ "user.role": "moderator" },
+					{
+						"user.id": {
+							in: { reference: "category.moderators" },
+						},
+					},
+				],
+			},
+		],
 	},
 	{
 		when: { resource: "user", action: "adminDelete" },

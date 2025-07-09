@@ -14,44 +14,49 @@ const { authorize } = require("../ruleEngine");
 
 const rules = [
 	{
-		// Administration may view invoices at any time
-		when: { resource: "invoice", action: "view" },
-		rule: { "user.role": "admin" },
-	},
-	{
-		// Customers may view their invoice only after generation is done
-		when: { resource: "invoice", action: "view" },
-		rule: {
-			AND: [
-				{ "user.role": "customer" },
-				{ "invoice.ownerId": { reference: "user.id" } },
-				{ "invoice.moduleStatus": { not: "generating" } },
-			],
-		},
-	},
-	{
-		// Admins may edit while generation finished and invoice not complete
-		when: { resource: "invoice", action: "edit" },
-		rule: {
-			AND: [
-				{ "user.role": "admin" },
-				{ "invoice.moduleStatus": { not: "generating" } },
-				{ "invoice.adminStatus": { in: ["draft", "pending"] } },
-			],
-		},
-	},
-	{
-		// Customers may pay their own pending invoice when available
-		when: { resource: "invoice", action: "pay" },
-		rule: {
-			AND: [
-				{ "user.role": "customer" },
-				{ "invoice.ownerId": { reference: "user.id" } },
-				{ "invoice.moduleStatus": { not: "generating" } },
-				{ "invoice.adminStatus": "pending" },
-				{ "invoice.customerStatus": "pending" },
-			],
-		},
+		when: { resource: "invoice" },
+		rules: [
+			{
+				// Administration may view invoices at any time
+				when: { action: "view" },
+				rule: { "user.role": "admin" },
+			},
+			{
+				// Customers may view their invoice only after generation is done
+				when: { action: "view" },
+				rule: {
+					"user.role": "customer",
+					invoice: {
+						ownerId: { reference: "user.id" },
+						moduleStatus: { not: "generating" },
+					},
+				},
+			},
+			{
+				// Admins may edit while generation finished and invoice not complete
+				when: { action: "edit" },
+				rule: {
+					"user.role": "admin",
+					invoice: {
+						moduleStatus: { not: "generating" },
+						adminStatus: { in: ["draft", "pending"] },
+					},
+				},
+			},
+			{
+				// Customers may pay their own pending invoice when available
+				when: { action: "pay" },
+				rule: {
+					"user.role": "customer",
+					invoice: {
+						ownerId: { reference: "user.id" },
+						moduleStatus: { not: "generating" },
+						adminStatus: "pending",
+						customerStatus: "pending",
+					},
+				},
+			},
+		],
 	},
 ];
 

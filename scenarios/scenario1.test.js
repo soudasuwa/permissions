@@ -16,25 +16,28 @@ const { authorize } = require("../ruleEngine");
 
 const rules = [
 	{
-		when: { resource: "todo", action: "create" },
-		rule: {
-			AND: [
-				{ "user.id": { exists: true } },
-				{ "item.ownerId": { reference: "user.id" } },
-			],
-		},
-	},
-	{
-		when: { resource: "todo", action: "read" },
-		rule: { "item.ownerId": { reference: "user.id" } },
-	},
-	{
-		when: { resource: "todo", action: "update" },
-		rule: { "item.ownerId": { reference: "user.id" } },
-	},
-	{
-		when: { resource: "todo", action: "delete" },
-		rule: { "item.ownerId": { reference: "user.id" } },
+		when: { resource: "todo" },
+		rules: [
+			{
+				when: { action: "create" },
+				rule: [
+					{ "user.id": { exists: true } },
+					{ "item.ownerId": { reference: "user.id" } },
+				],
+			},
+			{
+				when: { action: "read" },
+				rule: { "item.ownerId": { reference: "user.id" } },
+			},
+			{
+				when: { action: "update" },
+				rule: { "item.ownerId": { reference: "user.id" } },
+			},
+			{
+				when: { action: "delete" },
+				rule: { "item.ownerId": { reference: "user.id" } },
+			},
+		],
 	},
 ];
 

@@ -42,6 +42,19 @@ function compare(attr, expected, context) {
 	return actual === expected;
 }
 
+function isComparison(obj) {
+	return (
+		obj &&
+		typeof obj === "object" &&
+		("in" in obj ||
+			"not" in obj ||
+			"reference" in obj ||
+			"greaterThan" in obj ||
+			"lessThan" in obj ||
+			"exists" in obj)
+	);
+}
+
 function evaluateRule(rule, context) {
 	if (Array.isArray(rule)) {
 		for (const r of rule) {
@@ -82,6 +95,20 @@ function evaluateRule(rule, context) {
 	}
 
 	const [key, expected] = entries[0];
+
+	if (
+		typeof expected === "object" &&
+		expected !== null &&
+		!isComparison(expected)
+	) {
+		// Nested path object: expand keys with prefix
+		for (const [subKey, subVal] of Object.entries(expected)) {
+			const nested = { [`${key}.${subKey}`]: subVal };
+			if (!evaluateRule(nested, context)) return false;
+		}
+		return true;
+	}
+
 	return compare(key, expected, context);
 }
 // Determine whether a context is allowed under a rule set.
@@ -98,8 +125,14 @@ function authorize(rules, context) {
 	return rules.some((r) => {
 		if (typeof r !== "object" || r === null) return false;
 		const when = "when" in r ? r.when : undefined;
-		const rule = "rule" in r ? r.rule : undefined;
+
 		if (when && !evaluateRule(when, context)) return false;
+
+		if (Array.isArray(r.rules)) {
+			return authorize(r.rules, context);
+		}
+
+		const rule = "rule" in r ? r.rule : undefined;
 		if (rule) return evaluateRule(rule, context);
 		return evaluateRule(when, context);
 	});
