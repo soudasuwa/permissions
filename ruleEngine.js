@@ -75,7 +75,11 @@ function evaluateRule(rule, context) {
 	}
 
 	if ("OR" in rule) {
-		for (const subRule of rule.OR) {
+		const sub = rule.OR;
+		const subRules = Array.isArray(sub)
+			? sub
+			: Object.entries(sub).map(([k, v]) => ({ [k]: v }));
+		for (const subRule of subRules) {
 			if (evaluateRule(subRule, context)) return true;
 		}
 		return false;

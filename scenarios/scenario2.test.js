@@ -30,27 +30,23 @@ const rules = [
 			{
 				when: { action: "read" },
 				rule: {
-					OR: [
-						{ "item.ownerId": { reference: "user.id" } },
-						{
-							"user.id": {
-								in: { reference: "item.sharedWith" },
-							},
+					OR: {
+						"item.ownerId": { reference: "user.id" },
+						"user.id": {
+							in: { reference: "item.sharedWith" },
 						},
-					],
+					},
 				},
 			},
 			{
 				when: { action: "update" },
 				rule: {
-					OR: [
-						{ "item.ownerId": { reference: "user.id" } },
-						{
-							"user.id": {
-								in: { reference: "item.sharedWith" },
-							},
+					OR: {
+						"item.ownerId": { reference: "user.id" },
+						"user.id": {
+							in: { reference: "item.sharedWith" },
 						},
-					],
+					},
 				},
 			},
 			{
