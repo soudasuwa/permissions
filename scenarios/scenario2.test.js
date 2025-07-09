@@ -18,35 +18,46 @@ const { authorize } = require("../ruleEngine");
 
 const rules = [
 	{
-		when: { resource: "task", action: "create" },
-		rule: {
-			AND: [
-				{ "user.id": { exists: true } },
-				{ "item.ownerId": { reference: "user.id" } },
-			],
-		},
-	},
-	{
-		when: { resource: "task", action: "read" },
-		rule: {
-			OR: [
-				{ "item.ownerId": { reference: "user.id" } },
-				{ "user.id": { in: { reference: "item.sharedWith" } } },
-			],
-		},
-	},
-	{
-		when: { resource: "task", action: "update" },
-		rule: {
-			OR: [
-				{ "item.ownerId": { reference: "user.id" } },
-				{ "user.id": { in: { reference: "item.sharedWith" } } },
-			],
-		},
-	},
-	{
-		when: { resource: "task", action: "delete" },
-		rule: { "item.ownerId": { reference: "user.id" } },
+		when: { resource: "task" },
+		rules: [
+			{
+				when: { action: "create" },
+				rule: [
+					{ "user.id": { exists: true } },
+					{ "item.ownerId": { reference: "user.id" } },
+				],
+			},
+			{
+				when: { action: "read" },
+				rule: {
+					OR: [
+						{ "item.ownerId": { reference: "user.id" } },
+						{
+							"user.id": {
+								in: { reference: "item.sharedWith" },
+							},
+						},
+					],
+				},
+			},
+			{
+				when: { action: "update" },
+				rule: {
+					OR: [
+						{ "item.ownerId": { reference: "user.id" } },
+						{
+							"user.id": {
+								in: { reference: "item.sharedWith" },
+							},
+						},
+					],
+				},
+			},
+			{
+				when: { action: "delete" },
+				rule: { "item.ownerId": { reference: "user.id" } },
+			},
+		],
 	},
 ];
 

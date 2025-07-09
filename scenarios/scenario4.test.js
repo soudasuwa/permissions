@@ -17,49 +17,79 @@ const { authorize } = require("../ruleEngine");
 
 const rules = [
 	{
-		when: { resource: "note", action: "create" },
-		rule: {
-			OR: [
-				{ "notebook.ownerId": { reference: "user.id" } },
-				{ "user.id": { in: { reference: "notebook.editors" } } },
-			],
-		},
+		when: { resource: "note" },
+		rules: [
+			{
+				when: { action: "create" },
+				rule: {
+					OR: [
+						{ "notebook.ownerId": { reference: "user.id" } },
+						{
+							"user.id": {
+								in: { reference: "notebook.editors" },
+							},
+						},
+					],
+				},
+			},
+			{
+				when: { action: "read" },
+				rule: {
+					OR: [
+						{ "notebook.ownerId": { reference: "user.id" } },
+						{
+							"user.id": {
+								in: { reference: "notebook.editors" },
+							},
+						},
+						{
+							"user.id": {
+								in: { reference: "notebook.viewers" },
+							},
+						},
+					],
+				},
+			},
+			{
+				when: { action: "update" },
+				rule: {
+					OR: [
+						{ "notebook.ownerId": { reference: "user.id" } },
+						{
+							"user.id": {
+								in: { reference: "notebook.editors" },
+							},
+						},
+					],
+				},
+			},
+			{
+				when: { action: "delete" },
+				rule: {
+					OR: [
+						{ "notebook.ownerId": { reference: "user.id" } },
+						{
+							"user.id": {
+								in: { reference: "notebook.editors" },
+							},
+						},
+					],
+				},
+			},
+		],
 	},
 	{
-		when: { resource: "note", action: "read" },
-		rule: {
-			OR: [
-				{ "notebook.ownerId": { reference: "user.id" } },
-				{ "user.id": { in: { reference: "notebook.editors" } } },
-				{ "user.id": { in: { reference: "notebook.viewers" } } },
-			],
-		},
-	},
-	{
-		when: { resource: "note", action: "update" },
-		rule: {
-			OR: [
-				{ "notebook.ownerId": { reference: "user.id" } },
-				{ "user.id": { in: { reference: "notebook.editors" } } },
-			],
-		},
-	},
-	{
-		when: { resource: "note", action: "delete" },
-		rule: {
-			OR: [
-				{ "notebook.ownerId": { reference: "user.id" } },
-				{ "user.id": { in: { reference: "notebook.editors" } } },
-			],
-		},
-	},
-	{
-		when: { resource: "notebook", action: "delete" },
-		rule: { "notebook.ownerId": { reference: "user.id" } },
-	},
-	{
-		when: { resource: "notebook", action: "modifySharing" },
-		rule: { "notebook.ownerId": { reference: "user.id" } },
+		when: { resource: "notebook" },
+		rules: [
+			{
+				when: { action: "delete" },
+				rule: { "notebook.ownerId": { reference: "user.id" } },
+			},
+			{
+				when: { action: "modifySharing" },
+				rule: { "notebook.ownerId": { reference: "user.id" } },
+			},
+		],
 	},
 ];
 

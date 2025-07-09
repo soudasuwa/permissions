@@ -17,44 +17,60 @@ const { authorize } = require("../ruleEngine");
 
 const rules = [
 	{
-		when: { resource: "game", action: "create" },
-		rule: {
-			AND: [
-				{ "user.role": "player" },
-				{ "user.id": { in: { reference: "item.participants" } } },
-			],
-		},
-	},
-	{
-		when: { resource: "game", action: "move" },
-		rule: {
-			AND: [
-				{ "user.id": { in: { reference: "item.participants" } } },
-				{ "item.status": { not: "complete" } },
-			],
-		},
-	},
-	{
-		when: { resource: "game", action: "read" },
-		rule: {
-			OR: [
-				{ "item.status": "complete" },
-				{
-					AND: [
-						{ "user.id": { in: { reference: "item.participants" } } },
-						{ "item.status": { not: "complete" } },
+		when: { resource: "game" },
+		rules: [
+			{
+				when: { action: "create" },
+				rule: [
+					{ "user.role": "player" },
+					{
+						"user.id": {
+							in: { reference: "item.participants" },
+						},
+					},
+				],
+			},
+			{
+				when: { action: "move" },
+				rule: [
+					{
+						"user.id": {
+							in: { reference: "item.participants" },
+						},
+					},
+					{ "item.status": { not: "complete" } },
+				],
+			},
+			{
+				when: { action: "read" },
+				rule: {
+					OR: [
+						{ "item.status": "complete" },
+						[
+							{
+								"user.id": {
+									in: { reference: "item.participants" },
+								},
+							},
+							{ "item.status": { not: "complete" } },
+						],
 					],
 				},
-			],
-		},
+			},
+		],
 	},
 	{
-		when: { resource: "leaderboard", action: "read" },
-		rule: { "user.role": { in: ["player", "moderator"] } },
-	},
-	{
-		when: { resource: "leaderboard", action: "update" },
-		rule: { "user.role": "moderator" },
+		when: { resource: "leaderboard" },
+		rules: [
+			{
+				when: { action: "read" },
+				rule: { "user.role": { in: ["player", "moderator"] } },
+			},
+			{
+				when: { action: "update" },
+				rule: { "user.role": "moderator" },
+			},
+		],
 	},
 ];
 
