@@ -60,19 +60,22 @@ const rules = [
 		rules: [
 			{
 				when: { action: "create" },
-				rule: [
-					{ "user.role": "member" },
-					{
-						OR: [
-							{ "category.isPrivate": { not: true } },
-							{
-								"user.id": {
+				rule: {
+					OR: [
+						{
+							user: { role: "member" },
+							category: { isPrivate: { not: true } },
+						},
+						{
+							user: {
+								role: "member",
+								id: {
 									in: { reference: "category.allowedUsers" },
 								},
 							},
-						],
-					},
-				],
+						},
+					],
+				},
 			},
 		],
 	},
@@ -81,22 +84,24 @@ const rules = [
 		rules: [
 			{
 				when: { action: "editOwn" },
-				rule: [
-					{ "user.role": "member" },
-					{ "post.authorId": { reference: "user.id" } },
-					{ "post.ageMinutes": { lessThan: 30 } },
-				],
+				rule: {
+					user: { role: "member" },
+					post: {
+						authorId: { reference: "user.id" },
+						ageMinutes: { lessThan: 30 },
+					},
+				},
 			},
 			{
 				when: { action: "editAnyModerator" },
-				rule: [
-					{ "user.role": "moderator" },
-					{
-						"user.id": {
+				rule: {
+					user: {
+						role: "moderator",
+						id: {
 							in: { reference: "category.moderators" },
 						},
 					},
-				],
+				},
 			},
 		],
 	},

@@ -21,39 +21,37 @@ const rules = [
 		rules: [
 			{
 				when: { action: "create" },
-				rule: [
-					{ "user.role": "player" },
-					{
-						"user.id": {
+				rule: {
+					user: {
+						role: "player",
+						id: {
 							in: { reference: "item.participants" },
 						},
 					},
-				],
+				},
 			},
 			{
 				when: { action: "move" },
-				rule: [
-					{
-						"user.id": {
-							in: { reference: "item.participants" },
-						},
+				rule: {
+					"user.id": {
+						in: { reference: "item.participants" },
 					},
-					{ "item.status": { not: "complete" } },
-				],
+					item: { status: { not: "complete" } },
+				},
 			},
 			{
 				when: { action: "read" },
 				rule: {
 					OR: [
-						{ "item.status": "complete" },
-						[
-							{
-								"user.id": {
+						{ item: { status: "complete" } },
+						{
+							user: {
+								id: {
 									in: { reference: "item.participants" },
 								},
 							},
-							{ "item.status": { not: "complete" } },
-						],
+							item: { status: { not: "complete" } },
+						},
 					],
 				},
 			},

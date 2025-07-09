@@ -66,9 +66,12 @@ test("OR match (one true)", () => {
 	assert.strictEqual(evaluateRule(rule, context), true);
 });
 
-test("Array is implicit AND", () => {
-	const rule = [{ "user.role": "admin" }, { "resource.status": "draft" }];
-	const context = { user: { role: "admin" }, resource: { status: "draft" } };
+test("object with multiple keys is implicit AND", () => {
+	const rule = { "user.role": "admin", "resource.status": "draft" };
+	const context = {
+		user: { role: "admin" },
+		resource: { status: "draft" },
+	};
 	assert.strictEqual(evaluateRule(rule, context), true);
 });
 
