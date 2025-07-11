@@ -1,29 +1,33 @@
-const { authorize } = require("./ruleEngine");
+const { DefaultEvaluator } = require("./ruleEngine");
 
 class AccessController {
-	constructor(rules, context = {}) {
+	constructor(rules, options = {}) {
+		if ("evaluator" in options || "context" in options) {
+			const { context = {}, evaluator = new DefaultEvaluator() } = options;
+			this._context = { ...context };
+			this.evaluator = evaluator;
+		} else {
+			// Backwards compatibility: second argument was context object
+			this._context = { ...options };
+			this.evaluator = new DefaultEvaluator();
+		}
 		this.rules = rules;
-		this._context = { ...context };
 	}
 
-	/**
-	 * Return a new controller with merged context.
-	 * Shallow merge is used so nested values are simply replaced.
-	 */
 	context(data = {}) {
 		return new AccessController(this.rules, {
-			...this._context,
-			...data,
+			context: { ...this._context, ...data },
+			evaluator: this.evaluator,
 		});
 	}
 
-	/**
-	 * Check access using the stored context plus any extra data.
-	 * Returns a boolean result from the rule engine.
-	 */
-	check(extra = {}) {
+	pemit(extra = {}) {
 		const ctx = { ...this._context, ...extra };
-		return authorize(this.rules, ctx);
+		return this.evaluator.authorize(this.rules, ctx);
+	}
+
+	check(extra = {}) {
+		return this.pemit(extra).passed;
 	}
 }
 

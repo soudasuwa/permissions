@@ -76,3 +76,67 @@ test("context performs shallow merge", () => {
 	assert.deepStrictEqual(base._context.item, { ownerId: "a", extra: true });
 	assert.strictEqual(replaced.check(), true);
 });
+
+test("custom evaluator can be provided", () => {
+	const xorLogic = {
+		match: (n) => typeof n === "object" && n !== null && "XOR" in n,
+		evaluate: (n, ctx, ev) => {
+			const sub = n.XOR;
+			const arr = Array.isArray(sub)
+				? sub
+				: Object.entries(sub).map(([k, v]) => ({ [k]: v }));
+			return arr.filter((r) => ev.evaluate(r, ctx).passed).length === 1;
+		},
+	};
+	const evaluator = new (require("./ruleEngine").DefaultEvaluator)({
+		logic: [xorLogic],
+	});
+	const controller = new AccessController(
+		[{ rule: { XOR: [{ a: true }, { b: true }] } }],
+		{ evaluator },
+	);
+	assert.strictEqual(controller.check({ a: true }), true);
+	assert.strictEqual(controller.check({ b: true }), true);
+	assert.strictEqual(controller.check({ a: true, b: true }), false);
+});
+
+test("custom context resolver via evaluator", () => {
+	const colonResolver = {
+		resolve: (p, ctx) =>
+			p.split(":").reduce((o, k) => (o ? o[k] : undefined), ctx),
+	};
+	const evaluator = new (require("./ruleEngine").DefaultEvaluator)({
+		contextResolver: colonResolver,
+	});
+	const controller = new AccessController(
+		[{ rule: { "user:id": { reference: "item:ownerId" } } }],
+		{ evaluator, context: { user: { id: "u" }, item: { ownerId: "u" } } },
+	);
+	assert.strictEqual(controller.check(), true);
+});
+
+test("custom rule node handler via evaluator", () => {
+	const allowIf = {
+		match: (n) => typeof n === "object" && n !== null && "allowIf" in n,
+		evaluate: (n, ctx, ev) => ev.evaluate(n.allowIf, ctx),
+	};
+	const evaluator = new (require("./ruleEngine").DefaultEvaluator)({
+		nodes: [allowIf],
+	});
+	const controller = new AccessController([{ allowIf: { ok: true } }], {
+		evaluator,
+		context: { ok: true },
+	});
+	assert.strictEqual(controller.check(), true);
+	const failController = controller.context({ ok: false });
+	assert.strictEqual(failController.check(), false);
+});
+
+test("pemit returns evaluation tree", () => {
+	const controller = new AccessController([{ rule: { flag: true } }], {
+		context: { flag: true },
+	});
+	const result = controller.pemit();
+	assert.strictEqual(result.passed, true);
+	assert.strictEqual(Array.isArray(result.children), true);
+});
