@@ -2,6 +2,20 @@
 	"name": "@soudasuwa/permissions",
 	"version": "1.2.0",
 	"type": "commonjs",
+	"description": "Generic rule engine and access controller for Node.js",
+	"main": "index.js",
+	"files": [
+		"index.js",
+		"AccessController.js",
+		"ruleEngine.js"
+	],
+	"keywords": [
+		"rule",
+		"engine",
+		"access",
+		"permissions"
+	],
+	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/soudasuwa/permissions.git"

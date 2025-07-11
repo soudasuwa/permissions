@@ -36,7 +36,8 @@ const rules = [
 3. Evaluate a context:
 
 ```javascript
-const { AccessController } = require("./AccessController");
+// After installing from npm
+const { AccessController } = require("@soudasuwa/permissions");
 
 const controller = new AccessController(rules).context({
   resource: "todo",
