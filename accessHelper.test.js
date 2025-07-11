@@ -94,7 +94,7 @@ test("custom evaluator can be provided", () => {
 		logic: [xorLogic],
 	});
 	const controller = new AccessController(
-		[{ rule: { XOR: [{ a: true }, { b: true }] } }],
+		[{ XOR: [{ a: true }, { b: true }] }],
 		{ evaluator },
 	);
 	assert.strictEqual(controller.check({ a: true }), true);
@@ -111,7 +111,7 @@ test("custom context resolver via evaluator", () => {
 		contextResolver: colonResolver,
 	});
 	const controller = new AccessController(
-		[{ rule: { "user:id": { reference: "item:ownerId" } } }],
+		[{ "user:id": { reference: "item:ownerId" } }],
 		{ evaluator, context: { user: { id: "u" }, item: { ownerId: "u" } } },
 	);
 	assert.strictEqual(controller.check(), true);
@@ -135,7 +135,7 @@ test("custom rule node handler via evaluator", () => {
 });
 
 test("pemit returns evaluation tree", () => {
-	const controller = new AccessController([{ rule: { flag: true } }], {
+	const controller = new AccessController([{ flag: true }], {
 		context: { flag: true },
 	});
 	const result = controller.pemit();

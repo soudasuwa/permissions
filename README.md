@@ -13,6 +13,7 @@ This project demonstrates a small access control rule engine written in Node.js.
 - **Realistic scenarios** – see the `scenarios/` folder for example rule sets (todo apps, collaborative notes, forums and more).
 - **AccessController** – helper class for incrementally building a context and checking access using the rule engine.
 - **Pluggable evaluator** – provide custom logic or comparison handlers when creating an `AccessController`.
+- **Pattern-based engine** – logic and comparison handlers match rule shapes rather than strings, making the system easy to extend.
 - **Custom context resolver** – override how attribute paths resolve to support different path syntaxes or lookups.
 - **Custom rule node handlers** – define alternative rule shapes by providing node interpreters.
 - **Functional rule builder** – compose rules with helpers like `field`, `ref`, `and`, `or` and `not`.
