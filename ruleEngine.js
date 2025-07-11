@@ -1,145 +1,355 @@
 // ----------------------------------------
-// Access Control Rule Evaluator
+// Access Control Rule Evaluator (pattern-based)
 // ----------------------------------------
 
-function getValue(path, context) {
-	const parts = path.split(".");
-	return parts.reduce((obj, key) => (obj ? obj[key] : undefined), context);
+const defaultResolver = {
+	resolve(path, ctx) {
+		return path.split(".").reduce((o, k) => (o ? o[k] : undefined), ctx);
+	},
+};
+
+function createBinaryComparePattern(type, key, operator, resolveExpected) {
+	return {
+		type,
+		match: (_, exp) => typeof exp === "object" && exp !== null && key in exp,
+		resolve(attr, exp, ctx, ev) {
+			const expected = resolveExpected
+				? resolveExpected(exp[key], ctx, ev)
+				: exp[key];
+			return {
+				path: attr,
+				value: ev.contextResolver.resolve(attr, ctx),
+				expected,
+			};
+		},
+		evaluate({ value, expected }) {
+			return operator(value, expected);
+		},
+	};
 }
 
-function compare(attr, expected, context) {
-	const actual = getValue(attr, context);
+const inCompare = {
+	type: "in",
+	match: (_, exp) => typeof exp === "object" && exp !== null && "in" in exp,
+	resolve(attr, exp, ctx, ev) {
+		let list = exp.in;
+		if (typeof list === "object" && list !== null && "reference" in list) {
+			list = ev.contextResolver.resolve(list.reference, ctx);
+		}
+		return {
+			path: attr,
+			value: ev.contextResolver.resolve(attr, ctx),
+			expected: list,
+		};
+	},
+	evaluate({ value, expected }) {
+		return Array.isArray(expected) && expected.includes(value);
+	},
+};
 
-	if (typeof expected === "object" && expected !== null) {
-		if ("in" in expected) {
-			const arr =
-				typeof expected.in === "object" &&
-				expected.in !== null &&
-				"reference" in expected.in
-					? getValue(expected.in.reference, context)
-					: expected.in;
-			return Array.isArray(arr) && arr.includes(actual);
-		}
-		if ("not" in expected) {
-			return actual !== expected.not;
-		}
-		if ("reference" in expected) {
-			const ref = getValue(expected.reference, context);
-			return actual === ref;
-		}
-		if ("greaterThan" in expected) {
-			return actual > expected.greaterThan;
-		}
-		if ("lessThan" in expected) {
-			return actual < expected.lessThan;
-		}
-		if ("exists" in expected) {
-			return expected.exists ? actual !== undefined : actual === undefined;
-		}
-		return false;
+const notCompare = createBinaryComparePattern("not", "not", (a, b) => a !== b);
+const referenceCompare = createBinaryComparePattern(
+	"reference",
+	"reference",
+	(a, b) => a === b,
+	(p, ctx, ev) => ev.contextResolver.resolve(p, ctx),
+);
+const greaterThanCompare = createBinaryComparePattern(
+	"greaterThan",
+	"greaterThan",
+	(a, b) => a > b,
+);
+const lessThanCompare = createBinaryComparePattern(
+	"lessThan",
+	"lessThan",
+	(a, b) => a < b,
+);
+const existsCompare = createBinaryComparePattern(
+	"exists",
+	"exists",
+	(val, flag) => (flag ? val !== undefined : val === undefined),
+);
+
+const defaultCompare = [
+	inCompare,
+	notCompare,
+	referenceCompare,
+	greaterThanCompare,
+	lessThanCompare,
+	existsCompare,
+];
+
+const arrayAndLogic = {
+	type: "AND",
+	match: Array.isArray,
+	evaluate(arr, ctx, ev) {
+		const children = arr.map((r) => ev.evaluateRule(r, ctx));
+		return { passed: children.every((c) => c.passed), children };
+	},
+};
+
+const andLogic = {
+	type: "AND",
+	match: (n) => typeof n === "object" && n !== null && "AND" in n,
+	resolve(node) {
+		return Array.isArray(node.AND)
+			? node.AND
+			: Object.entries(node.AND).map(([k, v]) => ({ [k]: v }));
+	},
+	evaluate(rules, ctx, ev) {
+		const children = rules.map((r) => ev.evaluateRule(r, ctx));
+		return { passed: children.every((c) => c.passed), children };
+	},
+};
+
+const orLogic = {
+	type: "OR",
+	match: (n) => typeof n === "object" && n !== null && "OR" in n,
+	resolve(node) {
+		return Array.isArray(node.OR)
+			? node.OR
+			: Object.entries(node.OR).map(([k, v]) => ({ [k]: v }));
+	},
+	evaluate(rules, ctx, ev) {
+		const children = rules.map((r) => ev.evaluateRule(r, ctx));
+		return { passed: children.some((c) => c.passed), children };
+	},
+};
+
+const notLogic = {
+	type: "NOT",
+	match: (n) => typeof n === "object" && n !== null && "NOT" in n,
+	resolve: (node) => node.NOT,
+	evaluate(rule, ctx, ev) {
+		const child = ev.evaluateRule(rule, ctx);
+		return { passed: !child.passed, children: [child] };
+	},
+};
+
+const defaultLogic = [arrayAndLogic, andLogic, orLogic, notLogic];
+
+const whenRuleNode = {
+	type: "when-rule",
+	match: (n) =>
+		typeof n === "object" && n !== null && "when" in n && "rule" in n,
+	evaluate(node, ctx, ev) {
+		const whenRes = ev.evaluateRule(node.when, ctx);
+		const ruleRes = whenRes.passed
+			? ev.evaluateRule(node.rule, ctx)
+			: { type: "rule", passed: false };
+		return {
+			passed: whenRes.passed && ruleRes.passed,
+			children: [whenRes, ruleRes],
+		};
+	},
+};
+
+const ruleGroupNode = {
+	type: "rule-group",
+	match: (n) =>
+		typeof n === "object" &&
+		n !== null &&
+		"when" in n &&
+		Array.isArray(n.rules),
+	evaluate(node, ctx, ev) {
+		const whenRes = ev.evaluateRule(node.when, ctx);
+		const rulesRes = whenRes.passed
+			? ev.authorize(node.rules, ctx)
+			: { type: "rules", passed: false, children: [] };
+		return {
+			passed: whenRes.passed && rulesRes.passed,
+			children: [whenRes, rulesRes],
+		};
+	},
+};
+
+const defaultNodes = [whenRuleNode, ruleGroupNode];
+
+class DefaultEvaluator {
+	constructor(options = {}) {
+		const {
+			logic = [],
+			compare = [],
+			nodes = [],
+			contextResolver = defaultResolver,
+		} = options;
+		this.logicHandlers = [...defaultLogic, ...logic];
+		this.compareHandlers = [...defaultCompare, ...compare];
+		this.nodeHandlers = [...defaultNodes, ...nodes];
+		this.contextResolver = contextResolver;
 	}
 
-	return actual === expected;
+	computeChildren(rule, ctx) {
+		if (Array.isArray(rule)) {
+			return rule.map((r) => this.evaluateRule(r, ctx));
+		}
+		if (typeof rule === "object" && rule !== null) {
+			if ("AND" in rule) {
+				const arr = Array.isArray(rule.AND)
+					? rule.AND
+					: Object.entries(rule.AND).map(([k, v]) => ({ [k]: v }));
+				return arr.map((r) => this.evaluateRule(r, ctx));
+			}
+			if ("OR" in rule) {
+				const sub = rule.OR;
+				const arr = Array.isArray(sub)
+					? sub
+					: Object.entries(sub).map(([k, v]) => ({ [k]: v }));
+				return arr.map((r) => this.evaluateRule(r, ctx));
+			}
+			if ("NOT" in rule) {
+				return [this.evaluateRule(rule.NOT, ctx)];
+			}
+		}
+		return [];
+	}
+
+	findCompare(attr, expected) {
+		return this.compareHandlers.find((c) => c.match(attr, expected));
+	}
+
+	compareValue(attr, expected, ctx) {
+		const handler = this.findCompare(attr, expected);
+		if (handler) {
+			if (handler.validate) handler.validate(expected);
+			if (handler.resolve) {
+				const resolved = handler.resolve(attr, expected, ctx, this);
+				const outcome = handler.evaluate(resolved, ctx, this);
+				if (outcome && typeof outcome === "object" && "passed" in outcome) {
+					return { type: handler.type, ...resolved, ...outcome };
+				}
+				return { type: handler.type, ...resolved, passed: !!outcome };
+			}
+			const outcome = handler.evaluate(attr, expected, ctx, this);
+			if (outcome && typeof outcome === "object" && "passed" in outcome) {
+				return { type: handler.type, ...outcome };
+			}
+			const value = this.contextResolver.resolve(attr, ctx);
+			return {
+				type: handler.type,
+				path: attr,
+				value,
+				expected,
+				passed: !!outcome,
+			};
+		}
+		const value = this.contextResolver.resolve(attr, ctx);
+		return {
+			type: "compare",
+			path: attr,
+			value,
+			expected,
+			passed: value === expected,
+		};
+	}
+
+	evaluateNode(node, ctx) {
+		for (const h of this.nodeHandlers) {
+			if (h.match(node)) {
+				const res = h.evaluate(node, ctx, this);
+				return { type: h.type, ...res };
+			}
+		}
+		return this.evaluateRule(node, ctx);
+	}
+
+	evaluateRule(rule, ctx) {
+		for (const logic of this.logicHandlers) {
+			if (logic.match(rule)) {
+				if (logic.validate) logic.validate(rule);
+				const resolved = logic.resolve ? logic.resolve(rule, ctx, this) : rule;
+				const outcome = logic.evaluate(resolved, ctx, this);
+				if (outcome && typeof outcome === "object" && "passed" in outcome) {
+					return { type: logic.type, ...outcome };
+				}
+				const children = this.computeChildren(rule, ctx);
+				return { type: logic.type, passed: !!outcome, children };
+			}
+		}
+
+		if (typeof rule !== "object" || rule === null) {
+			return { type: "invalid", passed: false };
+		}
+
+		const entries = Object.entries(rule);
+		if (entries.length > 1) {
+			const children = entries.map(([k, v]) =>
+				this.evaluateRule({ [k]: v }, ctx),
+			);
+			return { type: "AND", passed: children.every((c) => c.passed), children };
+		}
+
+		const [attr, val] = entries[0];
+		if (
+			typeof val === "object" &&
+			val !== null &&
+			!this.findCompare(attr, val)
+		) {
+			const children = Object.entries(val).map(([sub, subVal]) =>
+				this.evaluateRule({ [`${attr}.${sub}`]: subVal }, ctx),
+			);
+			return { type: "AND", passed: children.every((c) => c.passed), children };
+		}
+
+		return this.compareValue(attr, val, ctx);
+	}
+
+	evaluate(rule, ctx) {
+		return this.evaluateRule(rule, ctx);
+	}
+
+	authorize(rules, ctx) {
+		if (!Array.isArray(rules)) {
+			return { type: "rules", passed: false, children: [] };
+		}
+		const children = rules.map((r) => this.evaluateNode(r, ctx));
+		return { type: "rules", passed: children.some((c) => c.passed), children };
+	}
 }
 
-function isComparison(obj) {
-	return (
-		obj &&
-		typeof obj === "object" &&
-		("in" in obj ||
-			"not" in obj ||
-			"reference" in obj ||
-			"greaterThan" in obj ||
-			"lessThan" in obj ||
-			"exists" in obj)
+function unwrap(v) {
+	return v && typeof v.toJSON === "function" ? v.toJSON() : v;
+}
+
+function wrap(obj) {
+	const raw = Object.fromEntries(
+		Object.entries(obj).map(([k, v]) => [k, unwrap(v)]),
 	);
+	return { ...raw, toJSON: () => raw };
 }
 
-function evaluateRule(rule, context) {
-	if (Array.isArray(rule)) {
-		for (const r of rule) {
-			if (!evaluateRule(r, context)) return false;
-		}
-		return true;
-	}
-
-	if (typeof rule !== "object" || rule === null) {
-		return false;
-	}
-
-	if ("AND" in rule) {
-		for (const subRule of rule.AND) {
-			if (!evaluateRule(subRule, context)) return false;
-		}
-		return true;
-	}
-
-	if ("OR" in rule) {
-		const sub = rule.OR;
-		const subRules = Array.isArray(sub)
-			? sub
-			: Object.entries(sub).map(([k, v]) => ({ [k]: v }));
-		for (const subRule of subRules) {
-			if (evaluateRule(subRule, context)) return true;
-		}
-		return false;
-	}
-
-	if ("NOT" in rule) {
-		return !evaluateRule(rule.NOT, context);
-	}
-
-	const entries = Object.entries(rule);
-	if (entries.length > 1) {
-		// Treat multiple key/value pairs as an implicit AND
-		for (const [k, v] of entries) {
-			if (!evaluateRule({ [k]: v }, context)) return false;
-		}
-		return true;
-	}
-
-	const [key, expected] = entries[0];
-
-	if (
-		typeof expected === "object" &&
-		expected !== null &&
-		!isComparison(expected)
-	) {
-		// Nested path object: expand keys with prefix
-		for (const [subKey, subVal] of Object.entries(expected)) {
-			const nested = { [`${key}.${subKey}`]: subVal };
-			if (!evaluateRule(nested, context)) return false;
-		}
-		return true;
-	}
-
-	return compare(key, expected, context);
-}
-// Determine whether a context is allowed under a rule set.
-// The rule engine does not know or care which attributes are present in the
-// context. Each rule is simply evaluated and if any rule returns true, access
-// is granted.
-// Evaluate a list of rules against a context. Each rule may contain an optional
-// `when` property that itself is a rule evaluated first. If the `when` rule
-// matches, the engine then evaluates the rule's `rule` property. Access is
-// granted if any rule passes. The engine does not expect any specific attribute
-// names in either the rules or the context.
-function authorize(rules, context) {
-	if (!Array.isArray(rules)) return false;
-	return rules.some((r) => {
-		if (typeof r !== "object" || r === null) return false;
-		const when = "when" in r ? r.when : undefined;
-
-		if (when && !evaluateRule(when, context)) return false;
-
-		if (Array.isArray(r.rules)) {
-			return authorize(r.rules, context);
-		}
-
-		const rule = "rule" in r ? r.rule : undefined;
-		if (rule) return evaluateRule(rule, context);
-		return evaluateRule(when, context);
-	});
+function field(path, expected) {
+	return wrap({ [path]: unwrap(expected) });
 }
 
-module.exports = { evaluateRule, authorize };
+function ref(path) {
+	return wrap({ reference: path });
+}
+
+function and(...rules) {
+	return wrap({ AND: rules.map(unwrap) });
+}
+
+function or(...rules) {
+	return wrap({ OR: rules.map(unwrap) });
+}
+
+function not(rule) {
+	return wrap({ NOT: unwrap(rule) });
+}
+
+function fromJSON(obj) {
+	return wrap(obj);
+}
+
+module.exports = {
+	DefaultEvaluator,
+	evaluateRule: (rule, ctx) => new DefaultEvaluator().evaluate(rule, ctx),
+	authorize: (rules, ctx) => new DefaultEvaluator().authorize(rules, ctx),
+	field,
+	ref,
+	and,
+	or,
+	not,
+	fromJSON,
+};
