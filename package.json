@@ -1,7 +1,15 @@
 {
-	"name": "rule-evaluator",
-	"version": "1.0.0",
+	"name": "@soudasuwa/permissions",
+	"version": "1.2.0",
 	"type": "commonjs",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/soudasuwa/permissions.git"
+	},
+	"bugs": {
+		"url": "https://github.com/soudasuwa/permissions/issues"
+	},
+	"homepage": "https://github.com/soudasuwa/permissions#readme",
 	"scripts": {
 		"test": "node --test",
 		"format": "npx @biomejs/biome format --write",
