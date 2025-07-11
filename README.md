@@ -83,6 +83,70 @@ const controller = new AccessController(rules, {
 });
 ```
 
+### Custom comparison handler example
+
+```javascript
+const startsWith = {
+  match: (_, exp) => typeof exp === "object" && exp !== null && "startsWith" in exp,
+  evaluate: (attr, exp, ctx) => {
+    const value = attr.split('.').reduce((o, k) => (o ? o[k] : undefined), ctx);
+    return typeof value === 'string' && value.startsWith(exp.startsWith);
+  },
+};
+
+const controller = new AccessController(rules, {
+  evaluator: new DefaultEvaluator({ compare: [startsWith] }),
+});
+```
+
+### Custom context resolver example
+
+```javascript
+const colonResolver = {
+  resolve: (path, ctx) =>
+    path.split(":").reduce((o, k) => (o ? o[k] : undefined), ctx),
+};
+
+const controller = new AccessController(rules, {
+  evaluator: new DefaultEvaluator({ contextResolver: colonResolver }),
+});
+```
+
+### Custom rule node handler example
+
+```javascript
+const allowIf = {
+  match: node => typeof node === "object" && node !== null && "allowIf" in node,
+  evaluate: (node, ctx, ev) => ev.evaluate(node.allowIf, ctx),
+};
+
+const controller = new AccessController(rules, {
+  evaluator: new DefaultEvaluator({ nodes: [allowIf] }),
+});
+```
+
+### Functional rule builder example
+
+```javascript
+const { field, ref, and, not } = require("./ruleEngine");
+
+const rule = and(
+  field("user.id", ref("item.ownerId")),
+  not(field("item.status", "archived"))
+);
+
+const controller = new AccessController([{ rule }]);
+const okCtx = {
+  user: { id: "u1" },
+  item: { ownerId: "u1", status: "active" },
+};
+const result = controller.pemit(okCtx);
+console.log(result.passed); // true
+
+// Inspect evaluation trace
+console.dir(result, { depth: null });
+```
+
 ## Testing
 
 Run the unit tests with:
