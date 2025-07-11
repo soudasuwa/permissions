@@ -1,6 +1,15 @@
 const assert = require("node:assert");
 const { test } = require("node:test");
-const { evaluateRule, authorize } = require("./ruleEngine");
+const {
+	evaluateRule,
+	authorize,
+	DefaultEvaluator,
+	field,
+	ref,
+	and,
+	not,
+	fromJSON,
+} = require("./ruleEngine");
 
 // ----------------------------------------
 // Basic Equality
@@ -9,13 +18,13 @@ const { evaluateRule, authorize } = require("./ruleEngine");
 test("Equal match", () => {
 	const rule = { "user.role": "admin" };
 	const context = { user: { role: "admin" } };
-	assert.strictEqual(evaluateRule(rule, context), true);
+	assert.strictEqual(evaluateRule(rule, context).passed, true);
 });
 
 test("Equal mismatch", () => {
 	const rule = { "user.role": "admin" };
 	const context = { user: { role: "customer" } };
-	assert.strictEqual(evaluateRule(rule, context), false);
+	assert.strictEqual(evaluateRule(rule, context).passed, false);
 });
 
 // ----------------------------------------
@@ -25,25 +34,25 @@ test("Equal mismatch", () => {
 test("In operator match", () => {
 	const rule = { "resource.status": { in: ["draft", "pending"] } };
 	const context = { resource: { status: "pending" } };
-	assert.strictEqual(evaluateRule(rule, context), true);
+	assert.strictEqual(evaluateRule(rule, context).passed, true);
 });
 
 test("In operator miss", () => {
 	const rule = { "resource.status": { in: ["draft", "pending"] } };
 	const context = { resource: { status: "complete" } };
-	assert.strictEqual(evaluateRule(rule, context), false);
+	assert.strictEqual(evaluateRule(rule, context).passed, false);
 });
 
 test("Not operator match", () => {
 	const rule = { action: { not: "edit" } };
 	const context = { action: "view" };
-	assert.strictEqual(evaluateRule(rule, context), true);
+	assert.strictEqual(evaluateRule(rule, context).passed, true);
 });
 
 test("Reference match", () => {
 	const rule = { "resource.ownerId": { reference: "user.id" } };
 	const context = { user: { id: "123" }, resource: { ownerId: "123" } };
-	assert.strictEqual(evaluateRule(rule, context), true);
+	assert.strictEqual(evaluateRule(rule, context).passed, true);
 });
 
 // ----------------------------------------
@@ -55,7 +64,7 @@ test("AND match", () => {
 		AND: [{ "user.role": "admin" }, { "resource.status": "draft" }],
 	};
 	const context = { user: { role: "admin" }, resource: { status: "draft" } };
-	assert.strictEqual(evaluateRule(rule, context), true);
+	assert.strictEqual(evaluateRule(rule, context).passed, true);
 });
 
 test("OR match (one true)", () => {
@@ -63,7 +72,19 @@ test("OR match (one true)", () => {
 		OR: [{ "user.role": "admin" }, { "user.role": "manager" }],
 	};
 	const context = { user: { role: "manager" } };
-	assert.strictEqual(evaluateRule(rule, context), true);
+	assert.strictEqual(evaluateRule(rule, context).passed, true);
+});
+
+test("OR object syntax works", () => {
+	const rule = {
+		OR: { "user.role": "admin", "resource.status": "draft" },
+	};
+	const adminCtx = { user: { role: "admin" }, resource: { status: "pending" } };
+	const draftCtx = { user: { role: "user" }, resource: { status: "draft" } };
+	const noneCtx = { user: { role: "user" }, resource: { status: "pending" } };
+	assert.strictEqual(evaluateRule(rule, adminCtx).passed, true);
+	assert.strictEqual(evaluateRule(rule, draftCtx).passed, true);
+	assert.strictEqual(evaluateRule(rule, noneCtx).passed, false);
 });
 
 test("object with multiple keys is implicit AND", () => {
@@ -72,7 +93,7 @@ test("object with multiple keys is implicit AND", () => {
 		user: { role: "admin" },
 		resource: { status: "draft" },
 	};
-	assert.strictEqual(evaluateRule(rule, context), true);
+	assert.strictEqual(evaluateRule(rule, context).passed, true);
 });
 
 test("nested object expands path", () => {
@@ -90,8 +111,8 @@ test("nested object expands path", () => {
 		user: { id: "u1" },
 		invoice: { ownerId: "u2", status: "pending" },
 	};
-	assert.strictEqual(evaluateRule(rule, ctx), true);
-	assert.strictEqual(evaluateRule(rule, badCtx), false);
+	assert.strictEqual(evaluateRule(rule, ctx).passed, true);
+	assert.strictEqual(evaluateRule(rule, badCtx).passed, false);
 });
 
 // ----------------------------------------
@@ -103,7 +124,7 @@ test("NOT inside AND (should fail)", () => {
 		AND: [{ "user.role": "admin" }, { NOT: { "resource.status": "complete" } }],
 	};
 	const context = { user: { role: "admin" }, resource: { status: "complete" } };
-	assert.strictEqual(evaluateRule(rule, context), false);
+	assert.strictEqual(evaluateRule(rule, context).passed, false);
 });
 
 test("NOT inside AND (should pass)", () => {
@@ -111,7 +132,7 @@ test("NOT inside AND (should pass)", () => {
 		AND: [{ "user.role": "admin" }, { NOT: { "resource.status": "complete" } }],
 	};
 	const context = { user: { role: "admin" }, resource: { status: "pending" } };
-	assert.strictEqual(evaluateRule(rule, context), true);
+	assert.strictEqual(evaluateRule(rule, context).passed, true);
 });
 
 // ----------------------------------------
@@ -135,16 +156,16 @@ test("authorize matches correct rule", () => {
 		user: { id: "a" },
 		item: { ownerId: "a" },
 	};
-	assert.strictEqual(authorize(rules, context), true);
+	assert.strictEqual(authorize(rules, context).passed, true);
 	const createCtx = { resource: "todo", action: "create", user: { id: "a" } };
-	assert.strictEqual(authorize(rules, createCtx), true);
+	assert.strictEqual(authorize(rules, createCtx).passed, true);
 	const badCtx = {
 		resource: "todo",
 		action: "read",
 		user: { id: "b" },
 		item: { ownerId: "a" },
 	};
-	assert.strictEqual(authorize(rules, badCtx), false);
+	assert.strictEqual(authorize(rules, badCtx).passed, false);
 });
 
 test("authorize handles nested rule groups", () => {
@@ -189,7 +210,107 @@ test("authorize handles nested rule groups", () => {
 		user: { id: "b" },
 		notebook: { ownerId: "a" },
 	};
-	assert.strictEqual(authorize(rules, ctxDelete), true);
-	assert.strictEqual(authorize(rules, ctxShare), true);
-	assert.strictEqual(authorize(rules, ctxBad), false);
+	assert.strictEqual(authorize(rules, ctxDelete).passed, true);
+	assert.strictEqual(authorize(rules, ctxShare).passed, true);
+	assert.strictEqual(authorize(rules, ctxBad).passed, false);
+});
+
+// XOR logic
+test("XOR logic works via custom handler", () => {
+	const xorLogic = {
+		match: (n) => typeof n === "object" && n !== null && "XOR" in n,
+		evaluate: (n, ctx, ev) => {
+			const sub = n.XOR;
+			const arr = Array.isArray(sub)
+				? sub
+				: Object.entries(sub).map(([k, v]) => ({ [k]: v }));
+			return arr.filter((r) => ev.evaluate(r, ctx).passed).length === 1;
+		},
+	};
+	const evaluator = new DefaultEvaluator({ logic: [xorLogic] });
+	const rule = { XOR: [{ flagA: true }, { flagB: true }] };
+	const ctxA = { flagA: true };
+	const ctxB = { flagB: true };
+	const ctxBoth = { flagA: true, flagB: true };
+	const ctxNone = {};
+	assert.strictEqual(evaluator.evaluate(rule, ctxA).passed, true);
+	assert.strictEqual(evaluator.evaluate(rule, ctxB).passed, true);
+	assert.strictEqual(evaluator.evaluate(rule, ctxBoth).passed, false);
+	assert.strictEqual(evaluator.evaluate(rule, ctxNone).passed, false);
+});
+
+test("custom comparison handler works", () => {
+	const startsWith = {
+		match: (_, exp) =>
+			typeof exp === "object" && exp !== null && "startsWith" in exp,
+		evaluate: (attr, exp, ctx) => {
+			const value = attr
+				.split(".")
+				.reduce((o, k) => (o ? o[k] : undefined), ctx);
+			return typeof value === "string" && value.startsWith(exp.startsWith);
+		},
+	};
+	const evaluator = new DefaultEvaluator({ compare: [startsWith] });
+	const rule = { "user.name": { startsWith: "Jo" } };
+	assert.strictEqual(
+		evaluator.evaluate(rule, { user: { name: "John" } }).passed,
+		true,
+	);
+	assert.strictEqual(
+		evaluator.evaluate(rule, { user: { name: "Bob" } }).passed,
+		false,
+	);
+});
+
+test("custom context resolver works", () => {
+	const colonResolver = {
+		resolve: (p, ctx) =>
+			p.split(":").reduce((o, k) => (o ? o[k] : undefined), ctx),
+	};
+	const evaluator = new DefaultEvaluator({ contextResolver: colonResolver });
+	const rule = { "user:id": { reference: "resource:ownerId" } };
+	const ctx = { user: { id: "a" }, resource: { ownerId: "a" } };
+	assert.strictEqual(evaluator.evaluate(rule, ctx).passed, true);
+});
+
+test("custom rule node handler works", () => {
+	const allowIf = {
+		match: (node) =>
+			typeof node === "object" && node !== null && "allowIf" in node,
+		evaluate: (node, ctx, ev) => ev.evaluate(node.allowIf, ctx),
+	};
+	const evaluator = new DefaultEvaluator({ nodes: [allowIf] });
+	const rules = [{ allowIf: { flag: true } }];
+	assert.strictEqual(evaluator.authorize(rules, { flag: true }).passed, true);
+	assert.strictEqual(evaluator.authorize(rules, { flag: false }).passed, false);
+});
+
+test("functional rule builders compose rules", () => {
+	const builder = and(
+		field("user.id", ref("item.ownerId")),
+		not(field("item.status", "archived")),
+	);
+	const ctx = {
+		user: { id: "u1" },
+		item: { ownerId: "u1", status: "active" },
+	};
+	assert.strictEqual(evaluateRule(builder, ctx).passed, true);
+	const json = builder.toJSON();
+	const rebuilt = fromJSON(json);
+	assert.deepStrictEqual(json, rebuilt.toJSON());
+	assert.strictEqual(evaluateRule(rebuilt, ctx).passed, true);
+});
+
+test("evaluate returns detailed tree", () => {
+	const evaluator = new DefaultEvaluator();
+	const rule = {
+		AND: [{ flag: true }, { NOT: { disabled: true } }],
+	};
+	const ctx = { flag: true, disabled: false };
+	const res = evaluator.evaluate(rule, ctx);
+	assert.strictEqual(res.type, "AND");
+	assert.strictEqual(res.passed, true);
+	assert.strictEqual(res.children.length, 2);
+	assert.strictEqual(res.children[0].path, "flag");
+	assert.strictEqual(res.children[1].type, "NOT");
 });

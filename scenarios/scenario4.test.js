@@ -22,14 +22,12 @@ const rules = [
 			{
 				when: { action: "create" },
 				rule: {
-					OR: [
-						{ "notebook.ownerId": { reference: "user.id" } },
-						{
-							"user.id": {
-								in: { reference: "notebook.editors" },
-							},
+					OR: {
+						"notebook.ownerId": { reference: "user.id" },
+						"user.id": {
+							in: { reference: "notebook.editors" },
 						},
-					],
+					},
 				},
 			},
 			{
@@ -53,27 +51,23 @@ const rules = [
 			{
 				when: { action: "update" },
 				rule: {
-					OR: [
-						{ "notebook.ownerId": { reference: "user.id" } },
-						{
-							"user.id": {
-								in: { reference: "notebook.editors" },
-							},
+					OR: {
+						"notebook.ownerId": { reference: "user.id" },
+						"user.id": {
+							in: { reference: "notebook.editors" },
 						},
-					],
+					},
 				},
 			},
 			{
 				when: { action: "delete" },
 				rule: {
-					OR: [
-						{ "notebook.ownerId": { reference: "user.id" } },
-						{
-							"user.id": {
-								in: { reference: "notebook.editors" },
-							},
+					OR: {
+						"notebook.ownerId": { reference: "user.id" },
+						"user.id": {
+							in: { reference: "notebook.editors" },
 						},
-					],
+					},
 				},
 			},
 		],
