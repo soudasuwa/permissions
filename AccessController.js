@@ -1,17 +1,13 @@
 const { DefaultEvaluator } = require("./ruleEngine");
 
 class AccessController {
-	constructor(rules, options = {}) {
-		if ("evaluator" in options || "context" in options) {
-			const { context = {}, evaluator = new DefaultEvaluator() } = options;
-			this._context = { ...context };
-			this.evaluator = evaluator;
-		} else {
-			// Backwards compatibility: second argument was context object
-			this._context = { ...options };
-			this.evaluator = new DefaultEvaluator();
-		}
+	constructor(
+		rules,
+		{ context = {}, evaluator = new DefaultEvaluator() } = {},
+	) {
 		this.rules = rules;
+		this._context = { ...context };
+		this.evaluator = evaluator;
 	}
 
 	context(data = {}) {

@@ -65,10 +65,12 @@ test("context returns new controller without mutating original", () => {
 
 test("context performs shallow merge", () => {
 	const base = new AccessController(rules, {
-		resource: "todo",
-		action: "read",
-		user: { id: "a" },
-		item: { ownerId: "a", extra: true },
+		context: {
+			resource: "todo",
+			action: "read",
+			user: { id: "a" },
+			item: { ownerId: "a", extra: true },
+		},
 	});
 	const replaced = base.context({ item: { ownerId: "a" } });
 
