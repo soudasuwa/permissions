@@ -1,6 +1,6 @@
 {
 	"name": "@soudasuwa/permissions",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"type": "commonjs",
 	"description": "Generic rule engine and access controller for Node.js",
 	"main": "index.js",
