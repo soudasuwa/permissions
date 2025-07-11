@@ -51,6 +51,63 @@ const result = controller.pemit({
 console.log(result.passed); // true
 ```
 
+## Working with Context
+
+`AccessController.context()` creates a new controller instance with extra values
+merged into the existing context. `pemit()` evaluates the final context
+against the rules. This makes it easy to build up a base context and re-use it
+across checks.
+
+```javascript
+const base = new AccessController(rules).context({ resource: "note" });
+
+// Add the action and per-request data before evaluating
+const res = base.context({ action: "read" }).pemit({
+  user: { id: "alice", role: "viewer" },
+  note: { ownerId: "alice" },
+});
+console.log(res.passed); // true
+```
+
+## Rule Examples
+
+The engine can represent many styles of access control. Here are a few common
+patterns:
+
+### Role based
+
+```javascript
+const rbacRules = [
+  { when: { action: "delete" }, rule: { "user.role": "admin" } },
+  {
+    when: { action: "read" },
+    rule: { "user.role": { in: ["admin", "viewer"] } },
+  },
+];
+```
+
+### Attribute based
+
+```javascript
+const abacRules = [
+  {
+    when: { action: "update" },
+    rule: { "item.ownerId": { reference: "user.id" } },
+  },
+];
+```
+
+### Value checks
+
+```javascript
+const invoiceRules = [
+  {
+    when: { resource: "invoice", action: "pay" },
+    rule: { "invoice.amount": { lessThan: 1000 } },
+  },
+];
+```
+
 ## Features
 
 - **Generic attribute matching** – rules reference arbitrary paths within the context.
