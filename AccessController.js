@@ -19,9 +19,7 @@ class AccessController {
 
 	pemit(extra = {}) {
 		const ctx = { ...this._context, ...extra };
-		const trace = [];
-		const result = this.evaluator.authorize(this.rules, ctx, trace);
-		return { passed: result.passed, trace };
+		return this.evaluator.authorize(this.rules, ctx);
 	}
 
 	check(extra = {}) {

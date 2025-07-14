@@ -1,6 +1,6 @@
 # Rule Engine
 
-A small, generic rule engine for Node.js used to evaluate access control decisions. Rules are expressed as plain objects and checked against a context object. The engine does not assume any specific property names so it can be adapted to a variety of domains.
+A small, generic rule engine for Node.js used to evaluate access control decisions. Rules are expressed in JSON and checked against a context object. The engine does not assume any specific property names so it can be adapted to a variety of domains.
 
 ## Overview
 
@@ -109,29 +109,6 @@ const invoiceRules = [
 ];
 ```
 
-### Existence checks
-
-```javascript
-const existenceRules = [
-  { rule: { "user.id": { exists: true } } },
-  { rule: { "session.token": { exists: false } } },
-];
-```
-
-### Nested rule groups
-
-```javascript
-const docRules = [
-  {
-    when: { resource: "doc" },
-    rules: [
-      { when: { action: "edit" }, rule: { "doc.ownerId": { reference: "user.id" } } },
-      { when: { action: "view" }, rule: { "doc.shared": true } },
-    ],
-  },
-];
-```
-
 ## Features
 
 - **Generic attribute matching** – rules reference arbitrary paths within the context.
@@ -142,7 +119,7 @@ const docRules = [
 - **AccessController** – helper class for incrementally building a context.
 - **Pluggable evaluator** – provide custom logic or comparison handlers.
 - **Functional rule builder** – compose rules with helpers like `field`, `ref`, `and` and `not`.
- - **Evaluation trace** – inspect which rules triggered via the returned trace array.
+- **Evaluation trace** – inspect how a rule was processed via the returned tree.
 
 ## Extending
 
@@ -226,31 +203,6 @@ console.log(result.passed); // true
 
 // Inspect evaluation trace
 console.dir(result, { depth: null });
-```
-
-### Inspecting evaluation results
-
-`AccessController.pemit()` returns a trace array describing which rules were
-checked. This can be helpful for debugging permissions.
-
-```javascript
-const out = controller.pemit(okCtx);
-console.dir(out, { depth: null });
-/* Example output:
-{
-  passed: true,
-  trace: [
-    {
-      AND: [
-        { "user.id": { reference: "item.ownerId" } },
-        { NOT: { "item.status": "archived" } }
-      ]
-    },
-    { NOT: { "item.status": "archived" } },
-    { "user.id": { reference: "item.ownerId" } }
-  ]
-}
-*/
 ```
 
 ## Testing
