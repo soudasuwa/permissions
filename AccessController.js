@@ -5,7 +5,7 @@ class AccessController {
 		rules,
 		{ context = {}, evaluator = new DefaultEvaluator() } = {},
 	) {
-		this.rules = rules;
+		this.rules = Array.isArray(rules) ? rules : [rules];
 		this._context = { ...context };
 		this.evaluator = evaluator;
 	}
@@ -19,7 +19,9 @@ class AccessController {
 
 	pemit(extra = {}) {
 		const ctx = { ...this._context, ...extra };
-		return this.evaluator.authorize(this.rules, ctx);
+		const trace = [];
+		const result = this.evaluator.authorize(this.rules, ctx, trace);
+		return { passed: result.passed, trace };
 	}
 
 	check(extra = {}) {

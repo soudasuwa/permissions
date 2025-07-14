@@ -23,8 +23,8 @@ const rules = [
 			{
 				when: { action: "create" },
 				rule: {
-					user: { id: { exists: true } },
-					item: { ownerId: { reference: "user.id" } },
+					"user.id": { exists: true },
+					"item.ownerId": { reference: "user.id" },
 				},
 			},
 			{

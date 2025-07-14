@@ -134,11 +134,12 @@ test("custom rule node handler via evaluator", () => {
 	assert.strictEqual(failController.check(), false);
 });
 
-test("pemit returns evaluation tree", () => {
+test("pemit returns evaluation trace", () => {
 	const controller = new AccessController([{ flag: true }], {
 		context: { flag: true },
 	});
 	const result = controller.pemit();
 	assert.strictEqual(result.passed, true);
-	assert.strictEqual(Array.isArray(result.children), true);
+	assert.strictEqual(Array.isArray(result.trace), true);
+	assert.strictEqual(result.trace.length > 0, true);
 });
