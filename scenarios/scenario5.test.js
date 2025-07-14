@@ -67,9 +67,7 @@ const rules = [
 						{
 							user: {
 								role: "member",
-								id: {
-									in: { reference: "category.allowedUsers" },
-								},
+								id: { in: { reference: "category.allowedUsers" } },
 							},
 						},
 					],
@@ -95,9 +93,7 @@ const rules = [
 				rule: {
 					user: {
 						role: "moderator",
-						id: {
-							in: { reference: "category.moderators" },
-						},
+						id: { in: { reference: "category.moderators" } },
 					},
 				},
 			},

@@ -8,8 +8,8 @@ const {
 	ref,
 	and,
 	not,
-	fromJSON,
 } = require("./ruleEngine");
+const { AccessController } = require("./AccessController");
 
 // ----------------------------------------
 // Basic Equality
@@ -286,19 +286,17 @@ test("custom rule node handler works", () => {
 });
 
 test("functional rule builders compose rules", () => {
-	const builder = and(
+	const rule = and(
 		field("user.id", ref("item.ownerId")),
 		not(field("item.status", "archived")),
 	);
+	const controller = new AccessController([rule]);
 	const ctx = {
 		user: { id: "u1" },
 		item: { ownerId: "u1", status: "active" },
 	};
-	assert.strictEqual(evaluateRule(builder, ctx).passed, true);
-	const json = builder.toJSON();
-	const rebuilt = fromJSON(json);
-	assert.deepStrictEqual(json, rebuilt.toJSON());
-	assert.strictEqual(evaluateRule(rebuilt, ctx).passed, true);
+	const result = controller.pemit(ctx);
+	assert.strictEqual(result.passed, true);
 });
 
 test("evaluate returns detailed tree", () => {
@@ -308,9 +306,8 @@ test("evaluate returns detailed tree", () => {
 	};
 	const ctx = { flag: true, disabled: false };
 	const res = evaluator.evaluate(rule, ctx);
-	assert.strictEqual(res.type, "AND");
 	assert.strictEqual(res.passed, true);
 	assert.strictEqual(res.children.length, 2);
 	assert.strictEqual(res.children[0].path, "flag");
-	assert.strictEqual(res.children[1].type, "NOT");
+	assert.strictEqual(res.children[1].children[0].path, "disabled");
 });

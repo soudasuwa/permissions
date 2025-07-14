@@ -24,18 +24,14 @@ const rules = [
 				rule: {
 					user: {
 						role: "player",
-						id: {
-							in: { reference: "item.participants" },
-						},
+						id: { in: { reference: "item.participants" } },
 					},
 				},
 			},
 			{
 				when: { action: "move" },
 				rule: {
-					"user.id": {
-						in: { reference: "item.participants" },
-					},
+					"user.id": { in: { reference: "item.participants" } },
 					item: { status: { not: "complete" } },
 				},
 			},
@@ -43,12 +39,10 @@ const rules = [
 				when: { action: "read" },
 				rule: {
 					OR: [
-						{ item: { status: "complete" } },
+						{ "item.status": "complete" },
 						{
 							user: {
-								id: {
-									in: { reference: "item.participants" },
-								},
+								id: { in: { reference: "item.participants" } },
 							},
 							item: { status: { not: "complete" } },
 						},
