@@ -8,8 +8,9 @@ const defaultResolver = {
 	},
 };
 
-function createBinaryComparePattern(key, operator, resolveExpected) {
+function createBinaryComparePattern(type, key, operator, resolveExpected) {
 	return {
+		type,
 		match: (_, exp) => typeof exp === "object" && exp !== null && key in exp,
 		resolve(attr, exp, ctx, ev) {
 			const expected = resolveExpected
@@ -28,6 +29,7 @@ function createBinaryComparePattern(key, operator, resolveExpected) {
 }
 
 const inCompare = {
+	type: "in",
 	match: (_, exp) => typeof exp === "object" && exp !== null && "in" in exp,
 	resolve(attr, exp, ctx, ev) {
 		let list = exp.in;
@@ -45,19 +47,27 @@ const inCompare = {
 	},
 };
 
-const notCompare = createBinaryComparePattern("not", (a, b) => a !== b);
+const notCompare = createBinaryComparePattern("not", "not", (a, b) => a !== b);
 const referenceCompare = createBinaryComparePattern(
+	"reference",
 	"reference",
 	(a, b) => a === b,
 	(p, ctx, ev) => ev.contextResolver.resolve(p, ctx),
 );
 const greaterThanCompare = createBinaryComparePattern(
 	"greaterThan",
+	"greaterThan",
 	(a, b) => a > b,
 );
-const lessThanCompare = createBinaryComparePattern("lessThan", (a, b) => a < b);
-const existsCompare = createBinaryComparePattern("exists", (val, flag) =>
-	flag ? val !== undefined : val === undefined,
+const lessThanCompare = createBinaryComparePattern(
+	"lessThan",
+	"lessThan",
+	(a, b) => a < b,
+);
+const existsCompare = createBinaryComparePattern(
+	"exists",
+	"exists",
+	(val, flag) => (flag ? val !== undefined : val === undefined),
 );
 
 const defaultCompare = [
@@ -73,13 +83,8 @@ const arrayAndLogic = {
 	type: "AND",
 	match: Array.isArray,
 	evaluate(arr, ctx, ev) {
-		const children = [];
-		for (const r of arr) {
-			const res = ev.evaluateRule(r, ctx);
-			children.push(res);
-			if (!res.passed) return { passed: false, children };
-		}
-		return { passed: true, children };
+		const children = arr.map((r) => ev.evaluateRule(r, ctx));
+		return { passed: children.every((c) => c.passed), children };
 	},
 };
 
@@ -92,13 +97,8 @@ const andLogic = {
 			: Object.entries(node.AND).map(([k, v]) => ({ [k]: v }));
 	},
 	evaluate(rules, ctx, ev) {
-		const children = [];
-		for (const r of rules) {
-			const res = ev.evaluateRule(r, ctx);
-			children.push(res);
-			if (!res.passed) return { passed: false, children };
-		}
-		return { passed: true, children };
+		const children = rules.map((r) => ev.evaluateRule(r, ctx));
+		return { passed: children.every((c) => c.passed), children };
 	},
 };
 
@@ -111,13 +111,8 @@ const orLogic = {
 			: Object.entries(node.OR).map(([k, v]) => ({ [k]: v }));
 	},
 	evaluate(rules, ctx, ev) {
-		const children = [];
-		for (const r of rules) {
-			const res = ev.evaluateRule(r, ctx);
-			children.push(res);
-			if (res.passed) return { passed: true, children };
-		}
-		return { passed: false, children };
+		const children = rules.map((r) => ev.evaluateRule(r, ctx));
+		return { passed: children.some((c) => c.passed), children };
 	},
 };
 
@@ -168,16 +163,7 @@ const ruleGroupNode = {
 	},
 };
 
-const ruleNode = {
-	type: "rule-node",
-	match: (n) =>
-		typeof n === "object" &&
-		n !== null &&
-		"rule" in n &&
-		Object.keys(n).length === 1,
-	evaluate: (node, ctx, ev) => ev.evaluateRule(node.rule, ctx),
-};
-const defaultNodes = [whenRuleNode, ruleGroupNode, ruleNode];
+const defaultNodes = [whenRuleNode, ruleGroupNode];
 
 class DefaultEvaluator {
 	constructor(options = {}) {
@@ -193,26 +179,26 @@ class DefaultEvaluator {
 		this.contextResolver = contextResolver;
 	}
 
-	computeChildren(rule, ctx, trace) {
+	computeChildren(rule, ctx) {
 		if (Array.isArray(rule)) {
-			return rule.map((r) => this.evaluateRule(r, ctx, trace));
+			return rule.map((r) => this.evaluateRule(r, ctx));
 		}
 		if (typeof rule === "object" && rule !== null) {
 			if ("AND" in rule) {
 				const arr = Array.isArray(rule.AND)
 					? rule.AND
 					: Object.entries(rule.AND).map(([k, v]) => ({ [k]: v }));
-				return arr.map((r) => this.evaluateRule(r, ctx, trace));
+				return arr.map((r) => this.evaluateRule(r, ctx));
 			}
 			if ("OR" in rule) {
 				const sub = rule.OR;
 				const arr = Array.isArray(sub)
 					? sub
 					: Object.entries(sub).map(([k, v]) => ({ [k]: v }));
-				return arr.map((r) => this.evaluateRule(r, ctx, trace));
+				return arr.map((r) => this.evaluateRule(r, ctx));
 			}
 			if ("NOT" in rule) {
-				return [this.evaluateRule(rule.NOT, ctx, trace)];
+				return [this.evaluateRule(rule.NOT, ctx)];
 			}
 		}
 		return [];
@@ -239,38 +225,35 @@ class DefaultEvaluator {
 				return { type: handler.type, ...outcome };
 			}
 			const value = this.contextResolver.resolve(attr, ctx);
-			const res = {
+			return {
 				type: handler.type,
 				path: attr,
 				value,
 				expected,
 				passed: !!outcome,
 			};
-			return res;
 		}
 		const value = this.contextResolver.resolve(attr, ctx);
-		const res = {
+		return {
 			type: "compare",
 			path: attr,
 			value,
 			expected,
 			passed: value === expected,
 		};
-		return res;
 	}
 
-	evaluateNode(node, ctx, trace) {
+	evaluateNode(node, ctx) {
 		for (const h of this.nodeHandlers) {
 			if (h.match(node)) {
 				const res = h.evaluate(node, ctx, this);
-				const out = { type: h.type, ...res };
-				return out;
+				return { type: h.type, ...res };
 			}
 		}
-		return this.evaluateRule(node, ctx, trace);
+		return this.evaluateRule(node, ctx);
 	}
 
-	_evaluate(rule, ctx, trace) {
+	evaluateRule(rule, ctx) {
 		for (const logic of this.logicHandlers) {
 			if (logic.match(rule)) {
 				if (logic.validate) logic.validate(rule);
@@ -279,7 +262,7 @@ class DefaultEvaluator {
 				if (outcome && typeof outcome === "object" && "passed" in outcome) {
 					return { type: logic.type, ...outcome };
 				}
-				const children = this.computeChildren(rule, ctx, trace);
+				const children = this.computeChildren(rule, ctx);
 				return { type: logic.type, passed: !!outcome, children };
 			}
 		}
@@ -291,13 +274,9 @@ class DefaultEvaluator {
 		const entries = Object.entries(rule);
 		if (entries.length > 1) {
 			const children = entries.map(([k, v]) =>
-				this.evaluateRule({ [k]: v }, ctx, trace),
+				this.evaluateRule({ [k]: v }, ctx),
 			);
-			return {
-				type: "AND",
-				passed: children.every((c) => c.passed),
-				children,
-			};
+			return { type: "AND", passed: children.every((c) => c.passed), children };
 		}
 
 		const [attr, val] = entries[0];
@@ -307,72 +286,70 @@ class DefaultEvaluator {
 			!this.findCompare(attr, val)
 		) {
 			const children = Object.entries(val).map(([sub, subVal]) =>
-				this.evaluateRule({ [`${attr}.${sub}`]: subVal }, ctx, trace),
+				this.evaluateRule({ [`${attr}.${sub}`]: subVal }, ctx),
 			);
-			return {
-				type: "AND",
-				passed: children.every((c) => c.passed),
-				children,
-			};
+			return { type: "AND", passed: children.every((c) => c.passed), children };
 		}
 
 		return this.compareValue(attr, val, ctx);
 	}
 
-	evaluateRule(rule, ctx, trace = []) {
-		const res = this._evaluate(rule, ctx, trace);
-		if (trace && res.passed) trace.unshift(rule);
-		return res;
+	evaluate(rule, ctx) {
+		return this.evaluateRule(rule, ctx);
 	}
 
-	evaluate(rule, ctx, trace = []) {
-		const res = this.evaluateRule(rule, ctx, trace);
-		return res;
-	}
-
-	authorize(rules, ctx, trace = []) {
+	authorize(rules, ctx) {
 		if (!Array.isArray(rules)) {
 			return { type: "rules", passed: false, children: [] };
 		}
-		const children = rules.map((r) => this.evaluateNode(r, ctx, trace));
-		const res = {
-			type: "rules",
-			passed: children.some((c) => c.passed),
-			children,
-		};
-		return res;
+		const children = rules.map((r) => this.evaluateNode(r, ctx));
+		return { type: "rules", passed: children.some((c) => c.passed), children };
 	}
 }
 
+function unwrap(v) {
+	return v && typeof v.toJSON === "function" ? v.toJSON() : v;
+}
+
+function wrap(obj) {
+	const raw = Object.fromEntries(
+		Object.entries(obj).map(([k, v]) => [k, unwrap(v)]),
+	);
+	return { ...raw, toJSON: () => raw };
+}
+
 function field(path, expected) {
-	return { [path]: expected };
+	return wrap({ [path]: unwrap(expected) });
 }
 
 function ref(path) {
-	return { reference: path };
+	return wrap({ reference: path });
 }
 
 function and(...rules) {
-	return { AND: rules };
+	return wrap({ AND: rules.map(unwrap) });
 }
 
 function or(...rules) {
-	return { OR: rules };
+	return wrap({ OR: rules.map(unwrap) });
 }
 
 function not(rule) {
-	return { NOT: rule };
+	return wrap({ NOT: unwrap(rule) });
+}
+
+function fromJSON(obj) {
+	return wrap(obj);
 }
 
 module.exports = {
 	DefaultEvaluator,
-	evaluateRule: (rule, ctx, trace = []) =>
-		new DefaultEvaluator().evaluate(rule, ctx, trace),
-	authorize: (rules, ctx, trace = []) =>
-		new DefaultEvaluator().authorize(rules, ctx, trace),
+	evaluateRule: (rule, ctx) => new DefaultEvaluator().evaluate(rule, ctx),
+	authorize: (rules, ctx) => new DefaultEvaluator().authorize(rules, ctx),
 	field,
 	ref,
 	and,
 	or,
 	not,
+	fromJSON,
 };
