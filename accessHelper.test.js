@@ -80,26 +80,26 @@ test("context performs shallow merge", () => {
 });
 
 test("custom evaluator can be provided", () => {
-	const xorLogic = {
-		match: (n) => typeof n === "object" && n !== null && "XOR" in n,
+	const nandLogic = {
+		match: (n) => typeof n === "object" && n !== null && "NAND" in n,
 		evaluate: (n, ctx, ev) => {
-			const sub = n.XOR;
+			const sub = n.NAND;
 			const arr = Array.isArray(sub)
 				? sub
 				: Object.entries(sub).map(([k, v]) => ({ [k]: v }));
-			return arr.filter((r) => ev.evaluate(r, ctx).passed).length === 1;
+			return !arr.every((r) => ev.evaluate(r, ctx).passed);
 		},
 	};
 	const evaluator = new (require("./ruleEngine").DefaultEvaluator)({
-		logic: [xorLogic],
+		logic: [nandLogic],
 	});
 	const controller = new AccessController(
-		[{ XOR: [{ a: true }, { b: true }] }],
+		[{ NAND: [{ a: true }, { b: true }] }],
 		{ evaluator },
 	);
 	assert.strictEqual(controller.check({ a: true }), true);
-	assert.strictEqual(controller.check({ b: true }), true);
 	assert.strictEqual(controller.check({ a: true, b: true }), false);
+	assert.strictEqual(controller.check({}), true);
 });
 
 test("custom context resolver via evaluator", () => {
