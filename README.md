@@ -158,7 +158,7 @@ const docRules = [
 
 - **Generic attribute matching** – rules reference arbitrary paths within the context.
 - **Comparison operators** – equality, `in`, `not`, value `reference`, numeric comparisons (`greaterThan`, `lessThan`) and `exists` checks.
-- **Logical composition** – combine rules with `AND`, `OR` and `NOT` blocks.
+- **Logical composition** – combine rules with `AND`, `OR`, `XOR` and `NOT` blocks.
 - **Authorize helper** – evaluate arrays of rules with optional `when` conditions.
 - **Nested rule groups** – share `when` conditions with child rules using a `rules` array.
 - **AccessController** – helper class for incrementally building a context.
@@ -168,21 +168,21 @@ const docRules = [
 
 ## Extending
 
-Advanced scenarios may require custom logic, comparison operators or context resolution. These can be plugged into the `DefaultEvaluator`:
+Advanced scenarios may require custom logic, comparison operators or context resolution. The engine already includes `AND`, `OR`, `XOR` and `NOT` logic. Additional behaviors can be plugged into the `DefaultEvaluator`:
 
 ```javascript
-const xorLogic = {
-  match: node => typeof node === "object" && node !== null && "XOR" in node,
+const nandLogic = {
+  match: node => typeof node === "object" && node !== null && "NAND" in node,
   evaluate: (node, ctx, ev) => {
-    const items = Array.isArray(node.XOR)
-      ? node.XOR
-      : Object.entries(node.XOR).map(([k, v]) => ({ [k]: v }));
-    return items.filter(r => ev.evaluate(r, ctx).passed).length === 1;
+    const items = Array.isArray(node.NAND)
+      ? node.NAND
+      : Object.entries(node.NAND).map(([k, v]) => ({ [k]: v }));
+    return !items.every(r => ev.evaluate(r, ctx).passed);
   },
 };
 
 const controller = new AccessController(rules, {
-  evaluator: new DefaultEvaluator({ logic: [xorLogic] }),
+  evaluator: new DefaultEvaluator({ logic: [nandLogic] }),
 });
 ```
 
@@ -231,11 +231,12 @@ const controller = new AccessController(rules, {
 ### Functional rule builder example
 
 ```javascript
-const { field, ref, and, not } = require("./ruleEngine");
+const { field, ref, and, xor, not } = require("./ruleEngine");
 
 const rule = and(
-  field("user.id", ref("item.ownerId")),
-  not(field("item.status", "archived"))
+  xor(field("user.role", "admin"), field("user.role", "editor")),
+  not(field("item.status", "archived")),
+  field("user.id", ref("item.ownerId"))
 );
 
 const controller = new AccessController([rule]);

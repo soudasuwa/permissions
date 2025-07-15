@@ -126,6 +126,25 @@ const orLogic = {
 	},
 };
 
+const xorLogic = {
+	match: (n) => typeof n === "object" && n !== null && "XOR" in n,
+	resolve(node) {
+		return Array.isArray(node.XOR)
+			? node.XOR
+			: Object.entries(node.XOR).map(([k, v]) => ({ [k]: v }));
+	},
+	evaluate(rules, ctx, ev) {
+		const children = [];
+		let passCount = 0;
+		for (const r of rules) {
+			const res = ev.evaluateRule(r, ctx);
+			children.push(res);
+			if (res.passed) passCount++;
+		}
+		return { passed: passCount === 1, children };
+	},
+};
+
 const notLogic = {
 	match: (n) => typeof n === "object" && n !== null && "NOT" in n,
 	resolve: (node) => node.NOT,
@@ -135,7 +154,7 @@ const notLogic = {
 	},
 };
 
-const defaultLogic = [arrayAndLogic, andLogic, orLogic, notLogic];
+const defaultLogic = [arrayAndLogic, andLogic, orLogic, xorLogic, notLogic];
 
 const whenRuleNode = {
 	match: (n) =>
@@ -312,6 +331,10 @@ function not(rule) {
 	return { NOT: rule };
 }
 
+function xor(...rules) {
+	return { XOR: rules };
+}
+
 module.exports = {
 	DefaultEvaluator,
 	evaluateRule: (rule, ctx, trace = []) =>
@@ -323,4 +346,5 @@ module.exports = {
 	and,
 	or,
 	not,
+	xor,
 };

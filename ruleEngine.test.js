@@ -7,6 +7,7 @@ const {
 	field,
 	ref,
 	and,
+	xor,
 	not,
 } = require("./ruleEngine");
 const { AccessController } = require("./AccessController");
@@ -216,18 +217,8 @@ test("authorize handles nested rule groups", () => {
 });
 
 // XOR logic
-test("XOR logic works via custom handler", () => {
-	const xorLogic = {
-		match: (n) => typeof n === "object" && n !== null && "XOR" in n,
-		evaluate: (n, ctx, ev) => {
-			const sub = n.XOR;
-			const arr = Array.isArray(sub)
-				? sub
-				: Object.entries(sub).map(([k, v]) => ({ [k]: v }));
-			return arr.filter((r) => ev.evaluate(r, ctx).passed).length === 1;
-		},
-	};
-	const evaluator = new DefaultEvaluator({ logic: [xorLogic] });
+test("XOR logic works", () => {
+	const evaluator = new DefaultEvaluator();
 	const rule = { XOR: [{ flagA: true }, { flagB: true }] };
 	const ctxA = { flagA: true };
 	const ctxB = { flagB: true };
@@ -287,6 +278,7 @@ test("custom rule node handler works", () => {
 
 test("functional rule builders compose rules", () => {
 	const rule = and(
+		xor(field("flagA", true), field("flagB", true)),
 		field("user.id", ref("item.ownerId")),
 		not(field("item.status", "archived")),
 	);
@@ -294,6 +286,7 @@ test("functional rule builders compose rules", () => {
 	const ctx = {
 		user: { id: "u1" },
 		item: { ownerId: "u1", status: "active" },
+		flagA: true,
 	};
 	const result = controller.pemit(ctx);
 	assert.strictEqual(result.passed, true);
