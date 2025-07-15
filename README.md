@@ -154,6 +154,257 @@ const docRules = [
 ];
 ```
 
+## Scenario Examples
+
+The following rule sets expand on the basic patterns above. They are presented
+from simplest to most complex and mirror the sample tests in the `scenarios/`
+folder.
+
+### Simple ToDo App
+
+```javascript
+const todoRules = [
+  {
+    when: { resource: "todo" },
+    rules: [
+      {
+        when: { action: "create" },
+        rule: { "user.id": { exists: true }, "item.ownerId": { reference: "user.id" } },
+      },
+      { when: { action: "read" }, rule: { "item.ownerId": { reference: "user.id" } } },
+      { when: { action: "update" }, rule: { "item.ownerId": { reference: "user.id" } } },
+      { when: { action: "delete" }, rule: { "item.ownerId": { reference: "user.id" } } },
+    ],
+  },
+];
+```
+
+### Friends Tasks
+
+```javascript
+const taskRules = [
+  {
+    when: { resource: "task" },
+    rules: [
+      {
+        when: { action: "create" },
+        rule: { "user.id": { exists: true }, "item.ownerId": { reference: "user.id" } },
+      },
+      {
+        when: { action: "read" },
+        rule: {
+          OR: {
+            "item.ownerId": { reference: "user.id" },
+            "user.id": { in: { reference: "item.sharedWith" } },
+          },
+        },
+      },
+      {
+        when: { action: "update" },
+        rule: {
+          OR: {
+            "item.ownerId": { reference: "user.id" },
+            "user.id": { in: { reference: "item.sharedWith" } },
+          },
+        },
+      },
+      { when: { action: "delete" }, rule: { "item.ownerId": { reference: "user.id" } } },
+    ],
+  },
+];
+```
+
+### Tic-Tac-Toe with Leaderboard
+
+```javascript
+const gameRules = [
+  {
+    when: { resource: "game" },
+    rules: [
+      {
+        when: { action: "create" },
+        rule: { user: { role: "player", id: { in: { reference: "item.participants" } } } },
+      },
+      {
+        when: { action: "move" },
+        rule: {
+          "user.id": { in: { reference: "item.participants" } },
+          item: { status: { not: "complete" } },
+        },
+      },
+      {
+        when: { action: "read" },
+        rule: {
+          OR: [
+            { "item.status": "complete" },
+            {
+              user: { id: { in: { reference: "item.participants" } } },
+              item: { status: { not: "complete" } },
+            },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    when: { resource: "leaderboard" },
+    rules: [
+      { when: { action: "read" }, rule: { "user.role": { in: ["player", "moderator"] } } },
+      { when: { action: "update" }, rule: { "user.role": "moderator" } },
+    ],
+  },
+];
+```
+
+### Collaborative Notes
+
+```javascript
+const noteRules = [
+  {
+    when: { resource: "note" },
+    rules: [
+      {
+        when: { action: "create" },
+        rule: {
+          OR: {
+            "notebook.ownerId": { reference: "user.id" },
+            "user.id": { in: { reference: "notebook.editors" } },
+          },
+        },
+      },
+      {
+        when: { action: "read" },
+        rule: {
+          OR: [
+            { "notebook.ownerId": { reference: "user.id" } },
+            { "user.id": { in: { reference: "notebook.editors" } } },
+            { "user.id": { in: { reference: "notebook.viewers" } } },
+          ],
+        },
+      },
+      {
+        when: { action: "update" },
+        rule: {
+          OR: {
+            "notebook.ownerId": { reference: "user.id" },
+            "user.id": { in: { reference: "notebook.editors" } },
+          },
+        },
+      },
+      {
+        when: { action: "delete" },
+        rule: {
+          OR: {
+            "notebook.ownerId": { reference: "user.id" },
+            "user.id": { in: { reference: "notebook.editors" } },
+          },
+        },
+      },
+    ],
+  },
+  {
+    when: { resource: "notebook" },
+    rules: [
+      { when: { action: "delete" }, rule: { "notebook.ownerId": { reference: "user.id" } } },
+      { when: { action: "modifySharing" }, rule: { "notebook.ownerId": { reference: "user.id" } } },
+    ],
+  },
+];
+```
+
+### Discussion Forum
+
+```javascript
+const forumRules = [
+  {
+    when: { resource: "category" },
+    rules: [
+      {
+        when: { action: "view" },
+        rule: {
+          OR: {
+            "category.isPrivate": { not: true },
+            "user.id": { in: { reference: "category.allowedUsers" } },
+            "user.role": "admin",
+          },
+        },
+      },
+    ],
+  },
+  {
+    when: { resource: "topic" },
+    rules: [
+      {
+        when: { action: "create" },
+        rule: {
+          OR: [
+            { user: { role: "member" }, category: { isPrivate: { not: true } } },
+            { user: { role: "member", id: { in: { reference: "category.allowedUsers" } } } },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    when: { resource: "post" },
+    rules: [
+      {
+        when: { action: "editOwn" },
+        rule: {
+          user: { role: "member" },
+          post: { authorId: { reference: "user.id" }, ageMinutes: { lessThan: 30 } },
+        },
+      },
+      {
+        when: { action: "editAnyModerator" },
+        rule: {
+          user: { role: "moderator", id: { in: { reference: "category.moderators" } } },
+        },
+      },
+    ],
+  },
+  { when: { resource: "user", action: "adminDelete" }, rule: { "user.role": "admin" } },
+];
+```
+
+### Invoice Lifecycle
+
+```javascript
+const invoiceRules = [
+  {
+    when: { resource: "invoice" },
+    rules: [
+      { when: { action: "view" }, rule: { "user.role": "admin" } },
+      {
+        when: { action: "view" },
+        rule: {
+          "user.role": "customer",
+          invoice: {
+            ownerId: { reference: "user.id" },
+            status: { in: ["pending", "complete"] },
+          },
+        },
+      },
+      {
+        when: { action: "edit" },
+        rule: {
+          "user.role": "admin",
+          invoice: { status: { in: ["draft", "pending"] } },
+        },
+      },
+      {
+        when: { action: "pay" },
+        rule: {
+          "user.role": "customer",
+          invoice: { ownerId: { reference: "user.id" }, status: "pending" },
+        },
+      },
+    ],
+  },
+];
+```
+
+
 ## Features
 
 - **Generic attribute matching** – rules reference arbitrary paths within the context.
