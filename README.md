@@ -11,6 +11,7 @@ The library processes a set of rules to determine whether a user may perform an 
 - Enforcing who may read, update or delete items in a todo application.
 - Authorising collaborative note editing or forum posts.
 - Controlling invoice workflows or other business processes.
+- Demo task management API using Express (see `packages/task-api`).
 
 Example rule sets for these scenarios are provided in the `scenarios/` folder.
 
