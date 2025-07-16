@@ -52,6 +52,16 @@ const result = controller.pemit({
 console.log(result.passed); // true
 ```
 
+You can also call `check()` to get a boolean result without the evaluation trace.
+
+```javascript
+const allowed = controller.check({
+  user: { id: "u1" },
+  item: { ownerId: "u1" },
+});
+console.log(allowed); // true
+```
+
 `AccessController` also accepts a single rule object instead of an array.
 
 ## Working with Context
@@ -540,4 +550,17 @@ Formatting and linting can be checked with:
 ```bash
 npm run check
 ```
+
+## API Summary
+
+- **AccessController** – manages rule sets and context
+  - `context(obj)` – return a new controller with `obj` merged in
+  - `pemit(ctx)` – evaluate and return `{ passed, trace }`
+  - `check(ctx)` – evaluate and return a boolean
+- **DefaultEvaluator** – pluggable engine used by `AccessController`
+- **Rule helpers** – `field`, `ref`, `and`, `or`, `xor`, `not`
+
+## License
+
+Released under the [MIT](./LICENSE) license.
 
