@@ -31,6 +31,7 @@
 		"check": "npx @biomejs/biome check --write"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.1.1"
+		"@biomejs/biome": "2.1.1",
+		"express": "^5.1.0"
 	}
 }
