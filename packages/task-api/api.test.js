@@ -1,6 +1,5 @@
 const assert = require("node:assert");
 const { test, beforeEach, afterEach } = require("node:test");
-const http = require("node:http");
 const { app, tasks } = require("./index");
 
 let server;
@@ -18,34 +17,17 @@ afterEach(() => {
 	server.close();
 });
 
-function request(method, path, body, token) {
-	return new Promise((resolve, reject) => {
-		const data = body ? JSON.stringify(body) : undefined;
-		const opts = new URL(path, baseUrl);
-		const req = http.request(
-			opts,
-			{
-				method,
-				headers: {
-					"Content-Type": "application/json",
-					"Content-Length": data ? Buffer.byteLength(data) : 0,
-					"x-session": token,
-				},
-			},
-			(res) => {
-				let str = "";
-				res.on("data", (c) => {
-					str += c;
-				});
-				res.on("end", () => {
-					resolve({ status: res.statusCode, body: str ? JSON.parse(str) : {} });
-				});
-			},
-		);
-		req.on("error", reject);
-		if (data) req.write(data);
-		req.end();
+async function request(method, path, body, token) {
+	const res = await fetch(new URL(path, baseUrl), {
+		method,
+		headers: {
+			"Content-Type": "application/json",
+			"x-session": token,
+		},
+		body: body ? JSON.stringify(body) : undefined,
 	});
+	const text = await res.text();
+	return { status: res.status, body: text ? JSON.parse(text) : {} };
 }
 
 test("user can create and read task", async () => {
@@ -70,6 +52,23 @@ test("collaborator can update but not delete", async () => {
 	assert.strictEqual(upd.body.title, "B");
 	const del = await request("DELETE", `/tasks/${id}`, null, "token-u2");
 	assert.strictEqual(del.status, 403);
+});
+
+test("collaborator cannot change owner", async () => {
+	const create = await request(
+		"POST",
+		"/tasks",
+		{ title: "O", collaborators: ["u2"] },
+		"token-u1",
+	);
+	const id = create.body.id;
+	const upd = await request(
+		"PUT",
+		`/tasks/${id}`,
+		{ ownerId: "u2" },
+		"token-u2",
+	);
+	assert.strictEqual(upd.status, 403);
 });
 
 test("owner can delete", async () => {
