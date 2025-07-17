@@ -66,60 +66,72 @@ app.use((req, res, next) => {
 	next();
 });
 
-function check(action, task, userController) {
-	const ctrl = userController.context({ action, task });
-	return ctrl.check();
+function requires(action) {
+	return (req, res, next) => {
+		const ctrl = req.ac.context({ action, task: req.task });
+		if (!ctrl.check()) {
+			return res.status(403).json({ error: "forbidden" });
+		}
+		next();
+	};
 }
 
-app.get("/tasks", (req, res) => {
-	const result = Object.values(tasks).filter((t) => check("read", t, req.ac));
-	res.json(result);
-});
+function loadTask(req, res, next) {
+	const task = tasks[req.params.id];
+	if (!task) return res.status(404).json({ error: "not found" });
+	req.task = task;
+	next();
+}
 
-app.post("/tasks", (req, res) => {
-	const task = {
+function createTask(req, _res, next) {
+	req.task = {
 		id: String(nextId++),
 		title: req.body.title,
 		ownerId: req.user.id,
 		collaborators: req.body.collaborators || [],
 	};
-	if (!check("create", task, req.ac)) {
-		return res.status(403).json({ error: "forbidden" });
-	}
-	tasks[task.id] = task;
-	res.json(task);
-});
+	next();
+}
 
-app.get("/tasks/:id", (req, res) => {
+function prepareUpdate(req, res, next) {
 	const task = tasks[req.params.id];
 	if (!task) return res.status(404).json({ error: "not found" });
-	if (!check("read", task, req.ac)) {
-		return res.status(403).json({ error: "forbidden" });
-	}
-	res.json(task);
-});
-
-app.put("/tasks/:id", (req, res) => {
-	const task = tasks[req.params.id];
-	if (!task) return res.status(404).json({ error: "not found" });
-	const updated = {
+	req.originalTask = task;
+	req.task = {
 		...task,
 		title: req.body.title ?? task.title,
+		ownerId: req.body.ownerId ?? task.ownerId,
 		collaborators: req.body.collaborators ?? task.collaborators,
 	};
-	if (!check("update", updated, req.ac)) {
-		return res.status(403).json({ error: "forbidden" });
-	}
-	tasks[req.params.id] = updated;
-	res.json(updated);
+	next();
+}
+
+app.get("/tasks", (req, res) => {
+	const result = Object.values(tasks).filter((t) => {
+		const ctrl = req.ac.context({ action: "read", task: t });
+		return ctrl.check();
+	});
+	res.json(result);
 });
 
-app.delete("/tasks/:id", (req, res) => {
-	const task = tasks[req.params.id];
-	if (!task) return res.status(404).json({ error: "not found" });
-	if (!check("delete", task, req.ac)) {
+app.post("/tasks", createTask, requires("create"), (req, res) => {
+	tasks[req.task.id] = req.task;
+	res.json(req.task);
+});
+
+app.get("/tasks/:id", loadTask, requires("read"), (req, res) => {
+	res.json(req.task);
+});
+
+app.put("/tasks/:id", prepareUpdate, requires("update"), (req, res) => {
+	if (req.body.ownerId && req.originalTask.ownerId !== req.user.id) {
 		return res.status(403).json({ error: "forbidden" });
 	}
+	tasks[req.params.id] = req.task;
+	res.json(req.task);
+});
+
+app.delete("/tasks/:id", loadTask, requires("delete"), (req, res) => {
 	delete tasks[req.params.id];
 	res.json({ ok: true });
 });
